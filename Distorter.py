@@ -78,8 +78,7 @@ class Distorter(object):
             mask = self.anomaly_mask(count, size, variance)
             self.distorted_data["{}_class".format(col)] = self.distorted_data["{}_class".format(col)] ^ mask
             if type == "gaussian":
-                noise = self.gaussian(self.distorted_data[col], self.gaussian_mean, self.gaussian_variance, mask)
-            self.distorted_data[col] = self.distorted_data[col] + noise
+                self.distorted_data[col] = self.gaussian(self.distorted_data[col], self.gaussian_mean, self.gaussian_variance, mask)
 
 
     def anomaly_mask(self, count, size, variance):

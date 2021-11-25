@@ -2,11 +2,13 @@ import Distorter
 import os
 import numpy as np
 
-path = os.path.join("test_data.csv")
+path = os.path.join("data.csv")
 columns = ["T1", "T2", "T3"]
 distorter = Distorter.Distorter()
+distorter.gaussian_variance = 1
 distorter.read_data(path, columns)
 distorter.apply_distortion("gaussian", 3, 0.005, 0.001)
+distorter.distorted_data.to_csv('distorted.csv')
 
 columns = distorter.columns
 window_size = 10
