@@ -1,0 +1,39 @@
+This file just indicates the functions used to distort each dataset
+
+=== gaussian_T1.csv ===
+distorter.gaussian_noise(0.5, count=2)
+distorter.gaussian_noise(1, count=1)
+distorter.gaussian_noise(1.5, count=1)
+
+=== gaussian_T1_n.csv ===
+distorter.uniform_noise(0.1)
+distorter.gaussian_noise(0.5, count=2)
+distorter.gaussian_noise(1, count=1)
+distorter.gaussian_noise(1.5, count=1)
+
+=== offset_T1.csv ===
+distorter.offset(3, anomaly_size=0.02, count=1)
+distorter.offset(-2, anomaly_size=0.03, count=1)
+
+=== offset_T1_n.csv ===
+distorter.uniform_noise(0.1)
+distorter.offset(3, anomaly_size=0.02, count=1)
+distorter.offset(-2, anomaly_size=0.03, count=1)
+
+=== zero_T1.csv ===
+distorter.zero(count=2)
+distorter.zero(anomaly_size=0.06, count=1)
+
+=== zero_T1_n.csv ===
+distorter.uniform_noise(0.1)
+distorter.zero(count=2)
+distorter.zero(anomaly_size=0.06, count=1)
+
+=== point_T1.csv ===
+distorter.point(3, 2)
+distorter.point(-3, 2)
+
+=== point_T1_n.csv ===
+distorter.uniform_noise(0.1)
+distorter.point(3, 2)
+distorter.point(-3, 2)
