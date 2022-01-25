@@ -86,6 +86,7 @@ class Distorter(object):
         if not columns:
             columns = self.columns
 
+        # The following variables are the valid keyword arguments
         # Anomaly count
         count = kwargs["count"] if "count" in kwargs else self.anomaly_count
 
@@ -95,7 +96,9 @@ class Distorter(object):
         anomaly_variance = kwargs["anomaly_variance"] if "anomaly_variance" in kwargs \
             else self.anomaly_variance
 
-        # Variables to set bounds for anomaly size
+        # Variables to set bounds for anomaly size; upper bound must be greater
+        # Setting these will overwrite anomaly size and variance, and distribute
+        # sizes in this range evenly
         upper_bound = kwargs["upper_bound"] if "upper_bound" in kwargs else None
         lower_bound = kwargs["lower_bound"] if "lower_bound" in kwargs else None
 
@@ -171,6 +174,18 @@ class Distorter(object):
             else:
                 raise ValueError("Please choose between the values 'regular' or 'distorted'")
         plt.show()
+
+
+    def uniform_noise(self, variance):
+        """
+        Apply gaussian noise to the entire time series
+
+        Args:
+            variance: variance
+        """
+        for col in self.columns:
+            noise = pd.Series(np.random.normal(0, variance, self.length))
+            self.distorted_data[col] = self.distorted_data[col] + noise
 
 
     def gaussian_noise(self, variance, **kwargs):
