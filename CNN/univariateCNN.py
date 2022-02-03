@@ -107,6 +107,13 @@ def normalize_windows(window_data):
         normalized_data.append(normalized_window)
     return normalized_data
     
+def predict_next_timestamp(model, history):
+	"""Predict the next time stamp given a sequence of history data"""
+
+	prediction = model.predict(history)
+	prediction = np.reshape(prediction, (prediction.size,))
+	return prediction 
+
     
 def forecast(x_valid_raw, y_valid_raw, predicted, model, last_window, 
              last_window_raw):
@@ -138,14 +145,14 @@ def forecast(x_valid_raw, y_valid_raw, predicted, model, last_window,
     # plt.legend()
     # plt.show()
 
-    rms = mean_squared_error(y_valid_raw, predicted_raw, squared=False)
-    print("rms " + str(rms))
+    #rms = mean_squared_error(y_valid_raw, predicted_raw, squared=False)
+    #print("rms " + str(rms))
     
-    next_timestamp = create_model.predict_next_timestamp(model, last_window)
+    next_timestamp = predict_next_timestamp(model, last_window)
     next_timestamp_raw = (next_timestamp[0] + 1) * last_window_raw[0][0]
     print('The next timestamp forecasting is: {}'.format(next_timestamp_raw))
     
-    return [next_timestamp_raw, rms]
+    return [next_timestamp_raw]
 
 def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data, 
                         timestamp, true_positive, true_negative, 
@@ -252,6 +259,7 @@ def train_fit():
     raw_seq = array(get_train_data("gaussian_t1.csv"))
     # choose a number of time steps
     x_input = array(get_test_data("gaussian_t1.csv"))
+    x_input_array = array(x_input)
     n_steps = len(x_input)
     # split into samples
     X, y = split_sequence(raw_seq, n_steps)
@@ -271,12 +279,13 @@ def train_fit():
 
     model = create_model(train_X) 
     # fit model
-    model.fit(train_X, train_label, batch_size=64, epochs=10, verbose=1, validation_data=(valid_X, valid_label))
+    model.fit(train_X, train_label, batch_size=64, epochs=7, verbose=1, validation_data=(valid_X, valid_label))
     model.save('initial_model.h5') 
     #model.fit(X, y, epochs=10, verbose=1)
     # demonstrate prediction
     #test = array([70, 80, 90])
     x_input = x_input.reshape((1, n_steps, n_features))
+    print("x_input: ", x_input)
     yhat = model.predict(x_input, verbose=0)
     print("Prediction first: ", yhat)
 
@@ -305,14 +314,15 @@ def train_fit():
             train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=13)
             
             x_train_update, y_train_update, x_valid_update, y_valid_update, x_valid_raw_update, y_valid_raw_update, last_window_raw_update, last_window_update, data = data_helper.load_timeseries(data, params)
-            
+            print("last window raw update: ",last_window_raw_update)
             x_input = x_input.reshape((1, n_steps, n_features))
             predicted = model.predict(x_input, verbose=0)
             print("Prediction inside for: ", predicted)
+            #predictedArray = x_input_array
             
             next_timestamp_raw, rms = forecast(x_valid_raw_update, 
                                                y_valid_raw_update, 
-                                               predicted, model, 
+                                               x_input_array, model, 
                                                last_window_update,
                                                last_window_raw_update)
             
@@ -331,11 +341,11 @@ def train_fit():
                 train_X, valid_X, train_label, valid_label = train_test_split(X, y,    test_size=0.2, random_state=13)
                 # update model
                 model = load_model('initial_model.h5') 
-                model.fit(train_X, train_label, batch_size=64, epochs=15, verbose=1,   validation_data=(valid_X, valid_label))
+                model.fit(train_X, train_label, batch_size=64, epochs=7, verbose=1,   validation_data=(valid_X, valid_label))
                 model.save('initial_model.h5')
                 x_input = x_input.reshape((1, n_steps, n_features))
-                prediction = model.predict(x_input, verbose=0)
-                print("Prediction inside if: ", prediction)
+                predicted = model.predict(x_input, verbose=0)
+                print("Prediction inside if: ", predicted)
                         
                 
 if __name__ == '__main__':
