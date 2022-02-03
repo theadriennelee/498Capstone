@@ -33,30 +33,43 @@ params = {"epochs": 50,
 
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
-	X, y = list(), list()
-	for i in range(len(sequence)):
-		# find the end of this pattern
-		end_ix = i + n_steps
-		# check if we are beyond the sequence
-		if end_ix > len(sequence)-1:
-			break
-		# gather input and output parts of the pattern
-		seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
-		X.append(seq_x)
-		y.append(seq_y)
-	return array(X), array(y)
+    X, y = list(), list()
+    for i in range(len(sequence)):
+        # find the end of this pattern
+        end_ix = i + n_steps
+        # check if we are beyond the sequence
+        if end_ix > len(sequence)-1:
+            break
+        # gather input and output parts of the pattern
+        seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
+        X.append(seq_x)
+        y.append(seq_y)
+        
+
+    return array(X), array(y)
 
 def get_train_data(filename):
     #dataset = pd.read_csv("train.csv")
     dataset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(11840,19734)]) #last 20% as test set - skip those rows
 # get the dataset to only have relevant columns - for now just the timestep and t1 datapoint 
-    dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
+    dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2'],axis=1)
     dataset.to_csv('train_parsed.csv')
     return (dataset)
 
+skipVal = 11840
+endVal = 15787
+
+def set_validation_data(index):
+    if skipVal < index < endVal:
+        return False
+    elif index == 0:
+        return False
+    else:
+        return True
+
 def get_test_data(filename):
     # split the dataset into 60 training 20 validation and 20 test (last 20% for test has the distortions applied)
-    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(1,11840)]) #test set is only the last 20% 
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x)) #test set is only the last 20% 
     testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
     testset.to_csv('test_parsed.csv')
     return(testset)
@@ -108,11 +121,11 @@ def normalize_windows(window_data):
     return normalized_data
     
 def predict_next_timestamp(model, history):
-	"""Predict the next time stamp given a sequence of history data"""
+    """Predict the next time stamp given a sequence of history data"""
 
-	prediction = model.predict(history)
-	prediction = np.reshape(prediction, (prediction.size,))
-	return prediction 
+    prediction = model.predict(history)
+    prediction = np.reshape(prediction, (prediction.size,))
+    return prediction 
 
     
 def forecast(x_valid_raw, y_valid_raw, predicted, model, last_window, 
@@ -141,7 +154,7 @@ def forecast(x_valid_raw, y_valid_raw, predicted, model, last_window,
     # plt.figure()
     # plt.subplot(111)
     # plt.plot(predicted_raw, label='Predicted')
-    # plt.plot(y_valid_raw, label='Actual')	
+    # plt.plot(y_valid_raw, label='Actual')    
     # plt.legend()
     # plt.show()
 
@@ -264,13 +277,13 @@ def train_fit():
     # split into samples
     X, y = split_sequence(raw_seq, n_steps)
     # summarize the data
-    #for i in range(len(X)):
-    #	print(X[i], y[i])
+    for i in range(len(X)):
+        print(X[i], y[i])
     
     # reshape from [samples, timesteps] into [samples, timesteps, features]
     n_features = 1
     X = X.reshape((X.shape[0], X.shape[1], n_features))
-    
+    print("X reshaped", X)
     # dividing dataset into training set, cross validation set, and test set
     train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     #train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2,    random_state=42)
@@ -317,7 +330,7 @@ def train_fit():
             train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
             #add in same thing as above? and get rid of below use of load_timeseries which returns something different 
-            x_train_update, x_valid_update, y_train_update, y_valid_update = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+           # x_train_update, x_valid_update, y_train_update, y_valid_update = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
             x_train_update, y_train_update, x_valid_update, y_valid_update, x_valid_raw_update, y_valid_raw_update, last_window_raw_update, last_window_update, data = data_helper.load_timeseries(data, params)
             print("last window raw update: ",last_window_raw_update)
