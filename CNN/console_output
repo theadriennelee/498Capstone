@@ -1,0 +1,91 @@
+
+runfile('D:/documents/capstone/498Capstone/CNN/univariateCNN.py', wdir='D:/documents/capstone/498Capstone/CNN')
+Reloaded modules: data_helper
+hello
+x.shape= (None, 24)
+model.x = (None, 7896, 1)
+model.y = (None, 1)
+Epoch 1/5
+50/50 [==============================] - 334s 7s/step - loss: 82.6035 - val_loss: 7.9820
+Epoch 2/5
+50/50 [==============================] - 334s 7s/step - loss: 8.0207 - val_loss: 0.5167
+Epoch 3/5
+50/50 [==============================] - 337s 7s/step - loss: 0.7309 - val_loss: 0.6935
+Epoch 4/5
+50/50 [==============================] - 329s 7s/step - loss: 0.4840 - val_loss: 0.3338
+Epoch 5/5
+50/50 [==============================] - 313s 6s/step - loss: 0.5097 - val_loss: 0.5600
+x_input:  [[[21. ]
+  [21. ]
+  [21. ]
+  ...
+  [25.5]
+  [25.5]
+  [25.5]]]
+Prediction first:  [[22.887335]]
+Model: "model_23"
+_________________________________________________________________
+ Layer (type)                Output Shape              Param #   
+=================================================================
+ input_24 (InputLayer)       [(None, 7896, 1)]         0         
+                                                                 
+ tcn (TCN)                   (None, 24)                158418    
+                                                                 
+ dense_23 (Dense)            (None, 1)                 25        
+                                                                 
+ activation_23 (Activation)  (None, 1)                 0         
+                                                                 
+=================================================================
+Total params: 158,443
+Trainable params: 79,465
+Non-trainable params: 78,978
+_________________________________________________________________
+None
+last window raw update:  [array([25.53333333, 25.56666667, 25.5       , 25.5       , 25.5       ,
+       25.5       ])]
+Prediction inside for:  [[22.887335]]
+Traceback (most recent call last):
+
+  File "<ipython-input-24-e752adacbef2>", line 1, in <module>
+    runfile('D:/documents/capstone/498Capstone/CNN/univariateCNN.py', wdir='D:/documents/capstone/498Capstone/CNN')
+
+  File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\spyder_kernels\customize\spydercustomize.py", line 827, in runfile
+    execfile(filename, namespace)
+
+  File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\spyder_kernels\customize\spydercustomize.py", line 110, in execfile
+    exec(compile(f.read(), filename, 'exec'), namespace)
+
+  File "D:/documents/capstone/498Capstone/CNN/univariateCNN.py", line 359, in <module>
+    train_fit()
+
+  File "D:/documents/capstone/498Capstone/CNN/univariateCNN.py", line 333, in train_fit
+    last_window_raw_update)
+
+  File "D:/documents/capstone/498Capstone/CNN/univariateCNN.py", line 151, in forecast
+    next_timestamp = predict_next_timestamp(model, last_window)
+
+  File "D:/documents/capstone/498Capstone/CNN/univariateCNN.py", line 113, in predict_next_timestamp
+    prediction = model.predict(history)
+
+  File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\keras\utils\traceback_utils.py", line 67, in error_handler
+    raise e.with_traceback(filtered_tb) from None
+
+  File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\tensorflow\python\framework\func_graph.py", line 1129, in autograph_handler
+    raise e.ag_error_metadata.to_exception(e)
+
+ValueError: in user code:
+
+    File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\keras\engine\training.py", line 1621, in predict_function  *
+        return step_function(self, iterator)
+    File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\keras\engine\training.py", line 1611, in step_function  **
+        outputs = model.distribute_strategy.run(run_step, args=(data,))
+    File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\keras\engine\training.py", line 1604, in run_step  **
+        outputs = model.predict_step(data)
+    File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\keras\engine\training.py", line 1572, in predict_step
+        return self(x, training=False)
+    File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\keras\utils\traceback_utils.py", line 67, in error_handler
+        raise e.with_traceback(filtered_tb) from None
+    File "C:\Users\Ryzen 5 2600\Anaconda3\lib\site-packages\keras\engine\input_spec.py", line 263, in assert_input_compatibility
+        raise ValueError(f'Input {input_index} of layer "{layer_name}" is '
+
+    ValueError: Input 0 of layer "model_23" is incompatible with the layer: expected shape=(None, 7896, 1), found shape=(None, 6, 1)
