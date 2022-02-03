@@ -48,7 +48,7 @@ def split_sequence(sequence, n_steps):
 
 def get_train_data(filename):
     #dataset = pd.read_csv("train.csv")
-    dataset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(15782,19734)]) #last 20% as test set - skip those rows
+    dataset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(11840,19734)]) #last 20% as test set - skip those rows
 # get the dataset to only have relevant columns - for now just the timestep and t1 datapoint 
     dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
     dataset.to_csv('train_parsed.csv')
@@ -56,7 +56,7 @@ def get_train_data(filename):
 
 def get_test_data(filename):
     # split the dataset into 60 training 20 validation and 20 test (last 20% for test has the distortions applied)
-    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(1,15782)]) #test set is only the last 20% 
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(1,11840)]) #test set is only the last 20% 
     testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
     testset.to_csv('test_parsed.csv')
     return(testset)
@@ -272,14 +272,15 @@ def train_fit():
     X = X.reshape((X.shape[0], X.shape[1], n_features))
     
     # dividing dataset into training set, cross validation set, and test set
-    train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42)
+    train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     #train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2,    random_state=42)
 
-    train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42)
-
+    train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+    
+    #define model
     model = create_model(train_X) 
     # fit model
-    model.fit(train_X, train_label, batch_size=64, epochs=7, verbose=1, validation_data=(valid_X, valid_label))
+    model.fit(train_X, train_label, batch_size=64, epochs=5, verbose=1, validation_data=(valid_X, valid_label))
     model.save('initial_model.h5') 
     #model.fit(X, y, epochs=10, verbose=1)
     # demonstrate prediction
@@ -293,7 +294,9 @@ def train_fit():
     #print('Test loss:', test_eval[0])
     #print('Test accuracy:', test_eval[1])
 
-    #keras.utils.plot_model(model, "my_model.png", show_shapes=True)
+    #keras.utils.plot_model(model, to_file='tcn_model.png', show_shapes=True, show_dtype=True, show_layer_names=True)
+    print(model.summary())
+    
     true_positive = []
     true_negative = []
     false_positive = []
@@ -304,14 +307,17 @@ def train_fit():
     #next step: continuously update the model to keep changing as it learns 
     i = 0 
     update_frequency = 50 
-    while (i + update_frequency) < x_input.size -1:
+    while (i + update_frequency) < current_data.size -1:
         valid_data = [] 
         for j in range(update_frequency):
             data = []
             data = np.append(data, x_input[i+j])
             
             #split data into training and validation again 
-            train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=13)
+            train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+            
+            #add in same thing as above? and get rid of below use of load_timeseries which returns something different 
+            x_train_update, x_valid_update, y_train_update, y_valid_update = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
             x_train_update, y_train_update, x_valid_update, y_valid_update, x_valid_raw_update, y_valid_raw_update, last_window_raw_update, last_window_update, data = data_helper.load_timeseries(data, params)
             print("last window raw update: ",last_window_raw_update)
@@ -341,7 +347,7 @@ def train_fit():
                 train_X, valid_X, train_label, valid_label = train_test_split(X, y,    test_size=0.2, random_state=13)
                 # update model
                 model = load_model('initial_model.h5') 
-                model.fit(train_X, train_label, batch_size=64, epochs=7, verbose=1,   validation_data=(valid_X, valid_label))
+                model.fit(train_X, train_label, batch_size=64, epochs=5, verbose=1,   validation_data=(valid_X, valid_label))
                 model.save('initial_model.h5')
                 x_input = x_input.reshape((1, n_steps, n_features))
                 predicted = model.predict(x_input, verbose=0)
