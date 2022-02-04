@@ -7,62 +7,85 @@ Created on Sat Nov 27 12:20:53 2021
 
 # univariate cnn example
 from numpy import array
-from tcn import TCN, compiled_tcn, tcn_full_summary
-import tensorflow as tf
-from tensorflow.keras import layers
-from tensorflow import keras
-from keras.models import Sequential
-from keras.models import load_model 
+from tcn import compiled_tcn
+from keras.models import Sequential 
 from keras.layers import Dense
 from keras.layers import Flatten
 from keras.layers.convolutional import Conv1D
 from keras.layers.convolutional import MaxPooling1D
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import KFold
-import data_helper
 import math
 import matplotlib.pyplot as plt
 
-params = {"epochs": 50, 
-          "batch_size": 2,
-          "window_size": 6,
-          "train_test_split": 0.8,
-          "validation_split": 0.1, 
-          "hidden_unit": 10}
+# parameters
+epochs = 5
+batch_size = 2
+window_size = 6
+train_test_split = 0.8
+validation_split = 0.1
+hidden_unit = 10
+
+n_steps = 100
+n_features = 1
+
+# splitting parameters
+skipVal = 11840
+endVal = 19734
+midVal = 15787
+
+update_frequency = 50
 
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
+    """
+    Split a univariate sequence into samples
+
+    Args:
+        sequence (array): Array of datapoints
+        n_steps (int): Length of samples
+    Returns:
+        array(x) (array): Array of samples of length n_steps - 1
+        array(y) (array): Array of last sample of given sequence
+    """
+
     X, y = list(), list()
     for i in range(len(sequence)):
-        # find the end of this pattern
         end_ix = i + n_steps
-        # check if we are beyond the sequence
         if end_ix > len(sequence)-1:
             break
-        # gather input and output parts of the pattern
         seq_x, seq_y = sequence[i:end_ix], sequence[end_ix]
         X.append(seq_x)
         y.append(seq_y)
-        
-
     return array(X), array(y)
 
 def get_train_data(filename):
-    #dataset = pd.read_csv("train.csv")
-    dataset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(11840,19734)]) #last 20% as test set - skip those rows
-# get the dataset to only have relevant columns - for now just the timestep and t1 datapoint 
-    dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
+    """
+    Load training data
+
+    Args:
+        filename (string): Name of .csv file to load data from
+    Returns:
+        dataset (array): 2D array of training data which includes timestamp and T1
+    """
+    dataset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(skipVal, endVal)])
+    dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+        'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+        'rv1','rv2','T1_class'],axis=1)
     dataset.to_csv('train_parsed.csv')
     return (dataset)
 
-skipVal = 11840
-endVal = 15787
 
 def set_validation_data(index):
-    if skipVal < index < endVal:
+    """
+    Helper function to read validation data
+
+    Args:
+        index (int): Index of datapoint
+    Returns:
+        boolean: Returns false if datapoint is a validation point
+    """
+    if skipVal < index < midVal:
         return False
     elif index == 0:
         return False
@@ -70,28 +93,37 @@ def set_validation_data(index):
         return True
 
 def get_test_data(filename):
-    # split the dataset into 60 training 20 validation and 20 test (last 20% for test has the distortions applied)
-    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x)) #test set is only the last 20% 
-    testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
+    """
+    Load testing data
+
+    Args:
+        filename (string): Name of .csv file to load data from
+    Returns:
+        dataset (array): 2D array of testing data which includes timestamp and T1
+    """
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
+    testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+        'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+        'rv1','rv2','T1_class'],axis=1)
     testset.to_csv('test_parsed.csv')
     return(testset)
         
 def load_flag_dictionary(filename):
     """
-    Load testing data.
+    Create flag dictionary
 
     Args:
-        filename (string): Name of file that contains testing data
+        filename (string): Name of .csv file that contains testing data
     Returns:
         timestamps (array[int]): Timestamps
         data (array[int]): Testing data
         flag_dictionary (dict[int]): Dictionary that contains T/F flags that
             determine if datapoint is valid or not
     """
-
-    # Load next 20% of data - testing data
-    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x)) #test set is only the last 20% 
-    testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2'],axis=1)
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
+    testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+        'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+        'rv1','rv2'],axis=1)
 
     # Seperate the data into individual arrays
     timestamps = testset.values[:, 0]
@@ -130,6 +162,7 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
         true_negative (arr[int]): List of true negative timestamps
         false_positive (arr[int]): List of false positive timestamps
         false_negative (arr[int]): List of flase negative timestamps
+        output_flag (boolean): Returns false if negative and true if positive
     """
     
     # Calculate thresholds
@@ -141,19 +174,6 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
     print('Upper limit ' + str(upper_limit))
     print('Lower limit ' + str(lower_limit))
     print('current data array', current_data[0])
-    # for i in range(len(current_data)):
-    #     if float(current_data[i]) > upper_limit or float(current_data[i]) < lower_limit:
-    #         if timestamps[i] in flag_dictionary:
-    #             true_negative.append(timestamps[i])
-    #         else:
-    #             false_negative.append(timestamps[i])
-    #             valid_data.append(current_data[i])
-    #     else:
-    #         if timestamps[i] in flag_dictionary:
-    #             false_positive.append(timestamps[i])
-    #         else:
-    #             true_positive.append(timestamps[i])
-    #             valid_data.append(current_data[i])
     
     # Compare data
     output_flag = None
@@ -172,61 +192,65 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
             true_positive.append(timestamp)
             valid_data.append(current_data)
     
-    return valid_data, true_positive, true_negative, false_positive, false_negative, output_flag
-  
-
-def create_model(x_train):
-    
-    #tcn_layer = TCN(input_shape=(n_steps, n_features))
-    model = compiled_tcn(
-        return_sequences=False,
-        num_feat=x_train.shape[2],
-        num_classes=0,
-        nb_filters=24,
-        kernel_size=8,
-        dilations=[2 ** i for i in range(9)],
-        nb_stacks=1,
-        max_len=x_train.shape[1],
-        use_skip_connections=False,
-        use_weight_norm=True,
-        regression=True,
-        dropout_rate=0
-    )
-#    model = Sequential()
-#
-#    model.add(Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(n_steps, n_features)))
-#    #model.add(TCN(nb_filters=64, kernel_size=3, activation='relu', input_shape=(n_steps, n_features)))
-#    model.add(MaxPooling1D(pool_size=2))
-#    model.add(Flatten())
-#    model.add(Dense(50, activation='relu'))
-#    model.add(Dense(1))
-#    model.compile(optimizer='adam', loss='mse',metrics=['accuracy'])
-
-    return model 
+    return valid_data, true_positive, true_negative, false_positive, false_negative, output_flag 
 
 def calculate_mean_squared(predicted_val, actual_val):
+    """
+
+    Calculates mean squared error
+
+    Args:
+        predicted_val (int): Predicted value
+        actual_val (int): Actual value
+
+    Returns:
+        mse (int): Mean squared error
+
+    """
+
     mse = math.sqrt(abs(actual_val - predicted_val))
     return mse
 
+def predict_next_timestamp(model, raw_seq):
+    """
+
+    Predicts next timestamp
+
+    Args:
+        model (model): CNN model
+        raw_seq (arr): Array of training/validation data
+
+    Returns:
+        yhat: Next predicted value
+
+    """
+    x_input = []
+    for x in range(n_steps):
+        x_input.append(raw_seq[len(raw_seq) - n_steps + x - 1])
+    x_input = array(x_input)
+    x_input = x_input.reshape((1, n_steps, n_features))
+    yhat = model.predict(x_input, verbose=0)
+    return yhat
+
+
 def train_fit():
-    # define input sequence
-    raw_seq = array(get_train_data("gaussian_t1.csv"))
-    # choose a number of time steps
-    current_data = array(get_test_data("gaussian_t1.csv"))
-    n_steps = 100
+    """Train and predict time series data"""
+
+    # load data
+    filename = "gaussian_t1.csv"
+    raw_seq = array(get_train_data(filename))
+    current_data = array(get_test_data(filename))
+    timestamps, flag_dictionary = load_flag_dictionary(filename)   
+
     # split into samples
     X, y = split_sequence(raw_seq, n_steps)
-    
-    timestamps, flag_dictionary = load_flag_dictionary("gaussian_t1.csv")    
-    
+ 
     # reshape from [samples, timesteps] into [samples, timesteps, features]
-    n_features = 1
     X = X.reshape((X.shape[0], X.shape[1], n_features))
     
+    # create model
     model = Sequential()
-
     model.add(Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(n_steps, n_features)))
-    #model.add(TCN(nb_filters=64, kernel_size=3, activation='relu', input_shape=(n_steps, n_features)))
     model.add(MaxPooling1D(pool_size=2))
     model.add(Flatten())
     model.add(Dense(50, activation='relu'))
@@ -234,18 +258,14 @@ def train_fit():
     model.compile(optimizer='adam', loss='mse',metrics=['accuracy'])
     
     # fit model
-    model.fit(X,y,epochs=5,verbose=1)
-    x_input = []
-    for x in range(n_steps):
-        x_input.append(raw_seq[len(raw_seq) - n_steps + x - 1])
-    x_input = array(x_input)
-    x_input = x_input.reshape((1, n_steps, n_features))
-    print('raw seq: ', raw_seq)
-    print('x_input: ', x_input)
-    yhat = model.predict(x_input, verbose=0)
-    print('yhat1', yhat)
+    model.fit(X,y,epochs=epochs,verbose=1)
+
+    # predict next timestamp
+    yhat = predict_next_timestamp(model, raw_seq)
+
     model.save('initial_model.h5') 
-    print("Prediction first: ", yhat)
+
+    print("Prediction: ", yhat)
     
     true_positive = []
     true_negative = []
@@ -257,28 +277,21 @@ def train_fit():
 
     #next step: continuously update the model to keep changing as it learns 
     i = 0 
-    update_frequency = 50 
     while (i + update_frequency) < current_data.size -1:
         valid_data = [] 
         for j in range(update_frequency):
+
+            # shape data
             data = np.append(raw_seq, current_data[i + j])
             X_update, y_update = split_sequence(data, n_steps)
             X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
-            x_input = []
-            for x in range(n_steps):
-                x_input.append(raw_seq[len(raw_seq) - n_steps + x - 1])
-            x_input = array(x_input)
-            x_input = x_input.reshape((1, n_steps, n_features))
-            print('raw seq: ', raw_seq)
-            print('x_input: ', x_input)
-            yhat = model.predict(x_input, verbose=0)
-            print('yhat2', yhat)
 
-            mse = calculate_mean_squared(yhat, current_data[i + j])
+            # predict next time stamp
+            yhat_update = predict_next_timestamp(model, raw_seq)
+
+            mse = calculate_mean_squared(yhat_update, current_data[i + j])
             mse_values.append(mse)
             
-            #X, y = split_sequence(raw_seq, n_steps)
-            print('current_Data', current_data)
             valid_data, true_positive, true_negative, false_positive,\
                 false_negative, output_flag = check_abnormal_data(yhat, 
                                                      flag_dictionary, 
@@ -290,10 +303,11 @@ def train_fit():
                                                      false_negative, 
                                                      valid_data)
 
+            # only update raw_seq is the data was found to be valid
             if output_flag == True:
                 raw_seq = data
 
-            
+        # if there is enough data to update the model  
         if len(valid_data) > 10:
             X, y = split_sequence(raw_seq, n_steps)
             model.fit(X,y,epochs=5,verbose=1)
@@ -311,7 +325,7 @@ def train_fit():
     mseExport = pd.DataFrame(mse_values)
     mseExport.to_csv('mseExport.csv') 
 
-    # Plot graph: predicted VS actual
+    # Plot graph: Current Data vs MSE
     plt.figure()
     plt.subplot(111)
     plt.plot(current_data, label='Current Data')
