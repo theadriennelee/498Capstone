@@ -52,7 +52,7 @@ def get_train_data(filename):
     #dataset = pd.read_csv("train.csv")
     dataset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(11840,19734)]) #last 20% as test set - skip those rows
 # get the dataset to only have relevant columns - for now just the timestep and t1 datapoint 
-    dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2'],axis=1)
+    dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
     dataset.to_csv('train_parsed.csv')
     return (dataset)
 
@@ -73,6 +73,35 @@ def get_test_data(filename):
     testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2','T1_class'],axis=1)
     testset.to_csv('test_parsed.csv')
     return(testset)
+        
+def load_flag_dictionary(filename):
+    """
+    Load testing data.
+
+    Args:
+        filename (string): Name of file that contains testing data
+    Returns:
+        timestamps (array[int]): Timestamps
+        data (array[int]): Testing data
+        flag_dictionary (dict[int]): Dictionary that contains T/F flags that
+            determine if datapoint is valid or not
+    """
+
+    # Load next 20% of data - testing data
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x)) #test set is only the last 20% 
+    testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5','T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint','rv1','rv2'],axis=1)
+
+    # Seperate the data into individual arrays
+    timestamps = testset.values[:, 0]
+    flag = testset.values[:, 1]
+
+    # Initialize dictionary
+    flag_dictionary = {}
+    for x in range(len(timestamps)):
+        if flag[x] == True:
+            flag_dictionary[timestamps[x]] = True
+
+    return timestamps, flag_dictionary    
     
 def get_normalized_data(filename, params):
     data = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(15782,19734)]) 
@@ -273,17 +302,21 @@ def train_fit():
     # choose a number of time steps
     x_input = array(get_test_data("gaussian_t1.csv"))
     x_input_array = array(x_input)
-    n_steps = len(x_input)
+    n_steps = 100
+    #n_steps = len(x_input)
     # split into samples
     X, y = split_sequence(raw_seq, n_steps)
+    
+    flag_dictionary = load_flag_dictionary("gaussian_t1.csv")    
+    
     # summarize the data
-    for i in range(len(X)):
-        print(X[i], y[i])
+    #for i in range(len(X)):
+    #    print(X[i], y[i])
     
     # reshape from [samples, timesteps] into [samples, timesteps, features]
     n_features = 1
     X = X.reshape((X.shape[0], X.shape[1], n_features))
-    print("X reshaped", X)
+    #print("X reshaped", X)
     # dividing dataset into training set, cross validation set, and test set
     train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     #train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2,    random_state=42)
@@ -293,14 +326,15 @@ def train_fit():
     #define model
     model = create_model(train_X) 
     # fit model
-    model.fit(train_X, train_label, batch_size=64, epochs=5, verbose=1, validation_data=(valid_X, valid_label))
+    model.fit(train_X, train_label, batch_size=5, epochs=5, verbose=1, validation_data=(valid_X, valid_label))
     model.save('initial_model.h5') 
     #model.fit(X, y, epochs=10, verbose=1)
     # demonstrate prediction
     #test = array([70, 80, 90])
-    x_input = x_input.reshape((1, n_steps, n_features))
-    print("x_input: ", x_input)
-    yhat = model.predict(x_input, verbose=0)
+    #print("x_input before reshape: ", x_input)
+    #x_input = x_input.reshape((1, n_steps, n_features))
+    #print("x_input: ", x_input)
+    yhat = model.predict(valid_X, verbose=0)
     print("Prediction first: ", yhat)
 
     #test_eval = model.evaluate(array(test_X), array(test_Y), verbose=0)
@@ -315,27 +349,29 @@ def train_fit():
     false_positive = []
     false_negative = []
     
-    timestamps, current_data, flag_dictionary = data_helper.load_newtimeseries("gaussian_t1.csv")
+    X_update, y_update = split_sequence(x_input, n_steps)
+#    timestamps, current_data, flag_dictionary = data_helper.load_newtimeseries("gaussian_t1.csv")
 
     #next step: continuously update the model to keep changing as it learns 
     i = 0 
     update_frequency = 50 
-    while (i + update_frequency) < current_data.size -1:
+    while (i + update_frequency) < x_input.size -1:
         valid_data = [] 
         for j in range(update_frequency):
             data = []
-            data = np.append(data, x_input[i+j])
+            data = np.append(raw_seq, x_input[0,:])
             
             #split data into training and validation again 
             train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
+            X, y = split_sequence(raw_seq, n_steps)
+
             #add in same thing as above? and get rid of below use of load_timeseries which returns something different 
            # x_train_update, x_valid_update, y_train_update, y_valid_update = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
-            x_train_update, y_train_update, x_valid_update, y_valid_update, x_valid_raw_update, y_valid_raw_update, last_window_raw_update, last_window_update, data = data_helper.load_timeseries(data, params)
-            print("last window raw update: ",last_window_raw_update)
+            #x_train_update, y_train_update, x_valid_update, y_valid_update, x_valid_raw_update, y_valid_raw_update, last_window_raw_update, last_window_update, data = data_helper.load_timeseries(data, params)
             x_input = x_input.reshape((1, n_steps, n_features))
-            predicted = model.predict(x_input, verbose=0)
+            predicted = model.predict(x_valid_update, verbose=0)
             print("Prediction inside for: ", predicted)
             #predictedArray = x_input_array
             
@@ -360,7 +396,7 @@ def train_fit():
                 train_X, valid_X, train_label, valid_label = train_test_split(X, y,    test_size=0.2, random_state=13)
                 # update model
                 model = load_model('initial_model.h5') 
-                model.fit(train_X, train_label, batch_size=64, epochs=5, verbose=1,   validation_data=(valid_X, valid_label))
+                model.fit(train_X, train_label, batch_size=5, epochs=5, verbose=1,   validation_data=(valid_X, valid_label))
                 model.save('initial_model.h5')
                 x_input = x_input.reshape((1, n_steps, n_features))
                 predicted = model.predict(x_input, verbose=0)
