@@ -230,7 +230,7 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
     print('Next_time_stamp_raw ' + str(next_timestamp_raw))
     print('Upper limit ' + str(upper_limit))
     print('Lower limit ' + str(lower_limit))
-
+    print('current data array', current_data[0])
     # for i in range(len(current_data)):
     #     if float(current_data[i]) > upper_limit or float(current_data[i]) < lower_limit:
     #         if timestamps[i] in flag_dictionary:
@@ -246,7 +246,7 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
     #             valid_data.append(current_data[i])
     
     # Compare data
-    if float(current_data) > upper_limit or float(current_data) < lower_limit:
+    if float(current_data[0]) > upper_limit or float(current_data[0]) < lower_limit:
         if timestamp in flag_dictionary:
             true_negative.append(timestamp)
         else:
@@ -320,7 +320,7 @@ def train_fit():
     # dividing dataset into training set, cross validation set, and test set
     train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     #train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2,    random_state=42)
-    
+    print('test_X', test_X)
     #define model
     model = create_model(train_X) 
     # fit model
@@ -331,7 +331,8 @@ def train_fit():
     #test = array([70, 80, 90])
     #print("x_input before reshape: ", x_input)
     #x_input = x_input.reshape((1, n_steps, n_features))
-    #print("x_input: ", x_input)
+    print("x_input: ", x_input)
+    test_X = test_X.reshape((1, n_steps, 1))
     yhat = model.predict(test_X, verbose=0)
     print("Prediction first: ", yhat)
 
@@ -340,7 +341,7 @@ def train_fit():
     #print('Test accuracy:', test_eval[1])
 
     #keras.utils.plot_model(model, to_file='tcn_model.png', show_shapes=True, show_dtype=True, show_layer_names=True)
-    print(model.summary())
+    #print(model.summary())
     
     true_positive = []
     true_negative = []
@@ -361,8 +362,9 @@ def train_fit():
             X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
             train_X_update, test_X_update, train_Y_update, test_Y_update = train_test_split(X_update, y_update, test_size=0.2, random_state=42, shuffle=False)
             model = load_model('initial_model.h5', custom_objects={'TCN':TCN}) 
+            test_X_update = test_X_update.reshape((1, n_steps, 1))
             yhat_update = model.predict(test_X_update, verbose=0) 
-
+            print('yhat_update: ',yhat_update)
             #split data into training and validation again 
 #            train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
@@ -371,8 +373,8 @@ def train_fit():
             valid_data, true_positive, true_negative, false_positive,\
                 false_negative = check_abnormal_data(yhat_update, 
                                                      flag_dictionary, 
-                                                     x_input[i + j, 1], 
-                                                     x_input[i + j, 0], 
+                                                     X_update[i + j, 0], 
+                                                     X_update[i + j, 1], 
                                                      true_positive, 
                                                      true_negative, 
                                                      false_positive, 
