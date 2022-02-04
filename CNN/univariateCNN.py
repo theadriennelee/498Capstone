@@ -23,6 +23,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import KFold
 import data_helper
+import math
+import matplotlib.pyplot as plt
 
 params = {"epochs": 50, 
           "batch_size": 2,
@@ -102,99 +104,7 @@ def load_flag_dictionary(filename):
             flag_dictionary[timestamps[x]] = True
 
     return timestamps, flag_dictionary    
-    
-def get_normalized_data(filename, params):
-    data = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(15782,19734)]) 
-    adjusted_window = params['window_size']+1 
-    raw = []
-    for index in range(len(data) - adjusted_window):
-        raw.append(data[index: index + adjusted_window])
-        
-    result = normalize_windows(raw)
-    
-    raw = np.array(raw)
-    result = np.array(result)
-    
-    #split into training and validation
-    split_ratio = round(params['train_test_split'] * result.shape[0])
-    train = result[:int(split_ratio), :]
-    np.random.shuffle(train)
-    
-     # x_train and y_train, for training
-    x_train = train[:, :-1]
-    y_train = train[:, -1]
-    
-    # x_valid and y_valid, for validation
-    x_valid = result[int(split_ratio):, :-1]
-    y_valid = result[int(split_ratio):, -1]
 
-    x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1)) 
-    x_valid = np.reshape(x_valid, (x_valid.shape[0], x_valid.shape[1], 1))  
-
-    x_valid_raw = raw[int(split_ratio):, :-1]
-    y_valid_raw = raw[int(split_ratio):, -1]
-
-    # Last window, for next time stamp prediction
-    last_raw = [data[-params['window_size']:]]
-    last = normalize_windows(last_raw)
-    last = np.array(last)
-    last = np.reshape(last, (last.shape[0], last.shape[1], 1))
-    
-    return [x_train, y_train, x_valid, y_valid, x_valid_raw, y_valid_raw, last_raw, last, data] 
-    
-def normalize_windows(window_data):
-    normalized_data = []
-    for window in window_data:
-        normalized_window = [((float(p) / float(window[0])) - 1) for p in window]
-        normalized_data.append(normalized_window)
-    return normalized_data
-    
-def predict_next_timestamp(model, history):
-    """Predict the next time stamp given a sequence of history data"""
-
-    prediction = model.predict(history)
-    prediction = np.reshape(prediction, (prediction.size,))
-    return prediction 
-
-    
-def forecast(x_valid_raw, y_valid_raw, predicted, model, last_window, 
-             last_window_raw):
-    """
-    Predicts the next timestamp
-    Args:
-        x_valid_raw (arr[int]): Raw x test values
-        y_valid_raw (arr[int]): Raw y test values
-        predicted (arr[int]): Predicted values during validation
-        model (keras.model): LSTM model
-        last_window (arr[int]): History of data normalized
-        last_window_raw (arr[int]): Raw history of data
-    Returns:
-        next_timestamp_raw (int): Predicted next timestamp
-        rms (int): RMS value
-    """
-    
-    predicted_raw = []
-    
-    for i in range(len(x_valid_raw)):
-        predicted_val = (predicted[i] + 1) * x_valid_raw[i][0]
-        predicted_raw.append(predicted_val)
-
-    # Plot graph: predicted VS actual
-    # plt.figure()
-    # plt.subplot(111)
-    # plt.plot(predicted_raw, label='Predicted')
-    # plt.plot(y_valid_raw, label='Actual')    
-    # plt.legend()
-    # plt.show()
-
-    #rms = mean_squared_error(y_valid_raw, predicted_raw, squared=False)
-    #print("rms " + str(rms))
-    
-    next_timestamp = predict_next_timestamp(model, last_window)
-    next_timestamp_raw = (next_timestamp[0] + 1) * last_window_raw[0][0]
-    print('The next timestamp forecasting is: {}'.format(next_timestamp_raw))
-    
-    return [next_timestamp_raw]
 
 def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data, 
                         timestamp, true_positive, true_negative, 
@@ -246,26 +156,24 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
     #             valid_data.append(current_data[i])
     
     # Compare data
+    output_flag = None
     if float(current_data[0]) > upper_limit or float(current_data[0]) < lower_limit:
+        output_flag = False
         if timestamp in flag_dictionary:
             true_negative.append(timestamp)
         else:
             false_negative.append(timestamp)
             valid_data.append(current_data)
     else:
+        output_flag = True
         if timestamp in flag_dictionary:
             false_positive.append(timestamp)
         else:
             true_positive.append(timestamp)
             valid_data.append(current_data)
     
-    return valid_data, true_positive, true_negative, false_positive, false_negative
-
-
-
-#print(dataset.head())
-   # print("Columns: ", dataset.columns)
-    #print('Shape of dataset: ',dataset.shape)    
+    return valid_data, true_positive, true_negative, false_positive, false_negative, output_flag
+  
 
 def create_model(x_train):
     
@@ -296,32 +204,24 @@ def create_model(x_train):
 
     return model 
 
+def calculate_mean_squared(predicted_val, actual_val):
+    mse = math.sqrt(abs(actual_val - predicted_val))
+    return mse
+
 def train_fit():
     # define input sequence
     raw_seq = array(get_train_data("gaussian_t1.csv"))
     # choose a number of time steps
     current_data = array(get_test_data("gaussian_t1.csv"))
     n_steps = 100
-    #n_steps = len(x_input)
     # split into samples
     X, y = split_sequence(raw_seq, n_steps)
     
     timestamps, flag_dictionary = load_flag_dictionary("gaussian_t1.csv")    
     
-    # summarize the data
-    #for i in range(len(X)):
-    #    print(X[i], y[i])
-    
     # reshape from [samples, timesteps] into [samples, timesteps, features]
     n_features = 1
     X = X.reshape((X.shape[0], X.shape[1], n_features))
-    #print("X reshaped", X)
-    # dividing dataset into training set, cross validation set, and test set
-    #train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
-    #train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2,    random_state=42)
-    #print('test_X', test_X)
-    #define model
-    #model = create_model(train_X) 
     
     model = Sequential()
 
@@ -344,30 +244,16 @@ def train_fit():
     print('x_input: ', x_input)
     yhat = model.predict(x_input, verbose=0)
     print('yhat1', yhat)
-    #model.fit(train_X, train_Y, batch_size=5, epochs=5, verbose=1, validation_data=(test_X, test_Y))
     model.save('initial_model.h5') 
-    #model.fit(X, y, epochs=10, verbose=1)
-    # demonstrate prediction
-    #test = array([70, 80, 90])
-    #print("x_input before reshape: ", x_input)
-    #print("x_input: ", x_input)
-    #test_X = test_X.reshape((1, n_steps, 1))
-    #yhat = model.predict(test_X, verbose=0)
     print("Prediction first: ", yhat)
-
-    #test_eval = model.evaluate(array(test_X), array(test_Y), verbose=0)
-    #print('Test loss:', test_eval[0])
-    #print('Test accuracy:', test_eval[1])
-
-    #keras.utils.plot_model(model, to_file='tcn_model.png', show_shapes=True, show_dtype=True, show_layer_names=True)
-    #print(model.summary())
     
     true_positive = []
     true_negative = []
     false_positive = []
     false_negative = []
+
+    mse_values = []
     
-#    timestamps, current_data, flag_dictionary = data_helper.load_newtimeseries("gaussian_t1.csv")
 
     #next step: continuously update the model to keep changing as it learns 
     i = 0 
@@ -375,11 +261,9 @@ def train_fit():
     while (i + update_frequency) < current_data.size -1:
         valid_data = [] 
         for j in range(update_frequency):
-            data = []
             data = np.append(raw_seq, current_data[i + j])
             X_update, y_update = split_sequence(data, n_steps)
             X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
-            #train_X_update, test_X_update, train_Y_update, test_Y_update = train_test_split(X_update, y_update, test_size=0.2, random_state=42, shuffle=False)
             x_input = []
             for x in range(n_steps):
                 x_input.append(raw_seq[len(raw_seq) - n_steps + x - 1])
@@ -389,17 +273,14 @@ def train_fit():
             print('x_input: ', x_input)
             yhat = model.predict(x_input, verbose=0)
             print('yhat2', yhat)
-            #model = load_model('initial_model.h5', custom_objects={'TCN':TCN}) 
-            #test_X_update = test_X_update.reshape((1, n_steps, 1))
-            #yhat_update = model.predict(test_X_update, verbose=0) 
-            #print('yhat_update: ',yhat_update)
-            #split data into training and validation again 
-#            train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+
+            mse = calculate_mean_squared(yhat, current_data[i + j])
+            mse_values.append(mse)
             
             #X, y = split_sequence(raw_seq, n_steps)
             print('current_Data', current_data)
             valid_data, true_positive, true_negative, false_positive,\
-                false_negative = check_abnormal_data(yhat, 
+                false_negative, output_flag = check_abnormal_data(yhat, 
                                                      flag_dictionary, 
                                                      current_data[i + j], 
                                                      timestamps[i + j], 
@@ -408,16 +289,35 @@ def train_fit():
                                                      false_positive, 
                                                      false_negative, 
                                                      valid_data)
+
+            if output_flag == True:
+                raw_seq = data
+
             
-            if len(valid_data) > 10:
-                train_X, valid_X, train_label, valid_label = train_test_split(X, y,    test_size=0.2, random_state=13)
-                # update model
-                model = load_model('initial_model.h5') 
-                model.fit(train_X, train_label, batch_size=5, epochs=5, verbose=1,   validation_data=(valid_X, valid_label))
-                model.save('initial_model.h5')
-                x_input = x_input.reshape((1, n_steps, n_features))
-                predicted = model.predict(x_input, verbose=0)
-                print("Prediction inside if: ", predicted)
+        if len(valid_data) > 10:
+            X, y = split_sequence(raw_seq, n_steps)
+            model.fit(X,y,epochs=5,verbose=1)
+    i = i + update_frequency
+
+    # Export data
+    tp = pd.DataFrame(true_positive)
+    tp.to_csv('truePositive.csv')
+    tn = pd.DataFrame(true_negative)
+    tn.to_csv('trueNegative.csv')
+    fp = pd.DataFrame(false_positive)
+    fp.to_csv('falsePositive.csv')
+    fn = pd.DataFrame(false_negative)
+    fn.to_csv('falseNegative.csv')
+    mseExport = pd.DataFrame(mse_values)
+    mseExport.to_csv('mseExport.csv') 
+
+    # Plot graph: predicted VS actual
+    plt.figure()
+    plt.subplot(111)
+    plt.plot(current_data, label='Current Data')
+    plt.plot(mse_values, label='mse')	
+    plt.legend()
+    plt.show()
                         
                 
 if __name__ == '__main__':
