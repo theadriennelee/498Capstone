@@ -360,28 +360,13 @@ def train_fit():
             X_update, y_update = split_sequence(data, n_steps)
             X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
             train_X_update, test_X_update, train_Y_update, test_Y_update = train_test_split(X_update, y_update, test_size=0.2, random_state=42, shuffle=False)
-            model = load_model('initial_model.h5') 
+            model = load_model('initial_model.h5', custom_objects={'TCN':TCN}) 
             yhat_update = model.predict(test_X_update, verbose=0) 
 
             #split data into training and validation again 
             train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
             X, y = split_sequence(raw_seq, n_steps)
-
-            #add in same thing as above? and get rid of below use of load_timeseries which returns something different 
-           # x_train_update, x_valid_update, y_train_update, y_valid_update = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
-            
-            #x_train_update, y_train_update, x_valid_update, y_valid_update, x_valid_raw_update, y_valid_raw_update, last_window_raw_update, last_window_update, data = data_helper.load_timeseries(data, params)
-            x_input = x_input.reshape((1, n_steps, n_features))
-            predicted = model.predict(x_valid_update, verbose=0)
-            print("Prediction inside for: ", predicted)
-            #predictedArray = x_input_array
-            
-            next_timestamp_raw, rms = forecast(x_valid_raw_update, 
-                                               y_valid_raw_update, 
-                                               x_input_array, model, 
-                                               last_window_update,
-                                               last_window_raw_update)
             
             valid_data, true_positive, true_negative, false_positive,\
                 false_negative = check_abnormal_data(next_timestamp_raw, 
