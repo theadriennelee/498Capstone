@@ -356,7 +356,7 @@ def train_fit():
         valid_data = [] 
         for j in range(update_frequency):
             data = []
-            data = np.append(raw_seq, x_input[0,:])
+            data = np.append(raw_seq, x_input[i + j,:])
             X_update, y_update = split_sequence(data, n_steps)
             X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
             train_X_update, test_X_update, train_Y_update, test_Y_update = train_test_split(X_update, y_update, test_size=0.2, random_state=42, shuffle=False)
@@ -364,15 +364,15 @@ def train_fit():
             yhat_update = model.predict(test_X_update, verbose=0) 
 
             #split data into training and validation again 
-            train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+#            train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
-            X, y = split_sequence(raw_seq, n_steps)
+            #X, y = split_sequence(raw_seq, n_steps)
             
             valid_data, true_positive, true_negative, false_positive,\
-                false_negative = check_abnormal_data(next_timestamp_raw, 
+                false_negative = check_abnormal_data(yhat_update, 
                                                      flag_dictionary, 
-                                                     current_data[i + j], 
-                                                     timestamps[i + j], 
+                                                     x_input[i + j, 1], 
+                                                     x_input[i + j, 0], 
                                                      true_positive, 
                                                      true_negative, 
                                                      false_positive, 
