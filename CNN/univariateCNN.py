@@ -320,13 +320,11 @@ def train_fit():
     # dividing dataset into training set, cross validation set, and test set
     train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     #train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2,    random_state=42)
-
-    train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     
     #define model
     model = create_model(train_X) 
     # fit model
-    model.fit(train_X, train_label, batch_size=5, epochs=5, verbose=1, validation_data=(valid_X, valid_label))
+    model.fit(train_X, train_Y, batch_size=5, epochs=5, verbose=1, validation_data=(test_X, test_Y))
     model.save('initial_model.h5') 
     #model.fit(X, y, epochs=10, verbose=1)
     # demonstrate prediction
@@ -334,7 +332,7 @@ def train_fit():
     #print("x_input before reshape: ", x_input)
     #x_input = x_input.reshape((1, n_steps, n_features))
     #print("x_input: ", x_input)
-    yhat = model.predict(valid_X, verbose=0)
+    yhat = model.predict(test_X, verbose=0)
     print("Prediction first: ", yhat)
 
     #test_eval = model.evaluate(array(test_X), array(test_Y), verbose=0)
@@ -349,7 +347,6 @@ def train_fit():
     false_positive = []
     false_negative = []
     
-    X_update, y_update = split_sequence(x_input, n_steps)
 #    timestamps, current_data, flag_dictionary = data_helper.load_newtimeseries("gaussian_t1.csv")
 
     #next step: continuously update the model to keep changing as it learns 
@@ -360,7 +357,12 @@ def train_fit():
         for j in range(update_frequency):
             data = []
             data = np.append(raw_seq, x_input[0,:])
-            
+            X_update, y_update = split_sequence(data, n_steps)
+            X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
+            train_X_update, test_X_update, train_Y_update, test_Y_update = train_test_split(X_update, y_update, test_size=0.2, random_state=42, shuffle=False)
+            model = load_model('initial_model.h5') 
+            yhat_update = model.predict(test_X_update, verbose=0) 
+
             #split data into training and validation again 
             train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
