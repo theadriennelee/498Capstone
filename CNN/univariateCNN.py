@@ -297,7 +297,7 @@ def train_fit():
         if len(valid_data) > 10:
             X, y = split_sequence(raw_seq, n_steps)
             model.fit(X,y,epochs=5,verbose=1)
-    i = i + update_frequency
+        i = i + update_frequency
 
     # Export data
     tp = pd.DataFrame(true_positive)
