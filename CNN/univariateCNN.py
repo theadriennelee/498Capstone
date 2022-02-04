@@ -318,13 +318,31 @@ def train_fit():
     X = X.reshape((X.shape[0], X.shape[1], n_features))
     #print("X reshaped", X)
     # dividing dataset into training set, cross validation set, and test set
-    train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+    #train_X, test_X, train_Y, test_Y = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
     #train_X, val_X, train_Y, val_Y = train_test_split(train_X, train_Y, test_size=0.2,    random_state=42)
-    print('test_X', test_X)
+    #print('test_X', test_X)
     #define model
-    model = create_model(train_X) 
+    #model = create_model(train_X) 
+    
+    model = Sequential()
+
+    model.add(Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(n_steps, n_features)))
+    #model.add(TCN(nb_filters=64, kernel_size=3, activation='relu', input_shape=(n_steps, n_features)))
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Flatten())
+    model.add(Dense(50, activation='relu'))
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mse',metrics=['accuracy'])
+    
     # fit model
-    model.fit(train_X, train_Y, batch_size=5, epochs=5, verbose=1, validation_data=(test_X, test_Y))
+    model.fit(X,y,epochs=5,verbose=1)
+    x_input = []
+    for x in range(n_steps):
+        x_input.append(raw_seq[len(raw_seq) - n_steps + x + 1])
+        x_input = array(x_input)
+        yhat = model.predict(x_input, verbose=0)
+        print(yhat)
+    #model.fit(train_X, train_Y, batch_size=5, epochs=5, verbose=1, validation_data=(test_X, test_Y))
     model.save('initial_model.h5') 
     #model.fit(X, y, epochs=10, verbose=1)
     # demonstrate prediction
