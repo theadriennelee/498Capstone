@@ -300,14 +300,13 @@ def train_fit():
     # define input sequence
     raw_seq = array(get_train_data("gaussian_t1.csv"))
     # choose a number of time steps
-    x_input = array(get_test_data("gaussian_t1.csv"))
-    x_input_array = array(x_input)
+    current_data = array(get_test_data("gaussian_t1.csv"))
     n_steps = 100
     #n_steps = len(x_input)
     # split into samples
     X, y = split_sequence(raw_seq, n_steps)
     
-    flag_dictionary = load_flag_dictionary("gaussian_t1.csv")    
+    timestamps, flag_dictionary = load_flag_dictionary("gaussian_t1.csv")    
     
     # summarize the data
     #for i in range(len(X)):
@@ -373,28 +372,37 @@ def train_fit():
     #next step: continuously update the model to keep changing as it learns 
     i = 0 
     update_frequency = 50 
-    while (i + update_frequency) < x_input.size -1:
+    while (i + update_frequency) < current_data.size -1:
         valid_data = [] 
         for j in range(update_frequency):
             data = []
-            data = np.append(raw_seq, x_input[i + j,:])
+            data = np.append(raw_seq, current_data[i + j])
             X_update, y_update = split_sequence(data, n_steps)
             X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
-            train_X_update, test_X_update, train_Y_update, test_Y_update = train_test_split(X_update, y_update, test_size=0.2, random_state=42, shuffle=False)
-            model = load_model('initial_model.h5', custom_objects={'TCN':TCN}) 
-            test_X_update = test_X_update.reshape((1, n_steps, 1))
-            yhat_update = model.predict(test_X_update, verbose=0) 
-            print('yhat_update: ',yhat_update)
+            #train_X_update, test_X_update, train_Y_update, test_Y_update = train_test_split(X_update, y_update, test_size=0.2, random_state=42, shuffle=False)
+            x_input = []
+            for x in range(n_steps):
+                x_input.append(raw_seq[len(raw_seq) - n_steps + x - 1])
+            x_input = array(x_input)
+            x_input = x_input.reshape((1, n_steps, n_features))
+            print('raw seq: ', raw_seq)
+            print('x_input: ', x_input)
+            yhat = model.predict(x_input, verbose=0)
+            print('yhat2', yhat)
+            #model = load_model('initial_model.h5', custom_objects={'TCN':TCN}) 
+            #test_X_update = test_X_update.reshape((1, n_steps, 1))
+            #yhat_update = model.predict(test_X_update, verbose=0) 
+            #print('yhat_update: ',yhat_update)
             #split data into training and validation again 
 #            train_X, valid_X, train_label, valid_label = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
             
             #X, y = split_sequence(raw_seq, n_steps)
-            
+            print('current_Data', current_data)
             valid_data, true_positive, true_negative, false_positive,\
-                false_negative = check_abnormal_data(yhat_update, 
+                false_negative = check_abnormal_data(yhat, 
                                                      flag_dictionary, 
-                                                     X_update[i + j, 0], 
-                                                     X_update[i + j, 1], 
+                                                     current_data[i + j], 
+                                                     timestamps[i + j], 
                                                      true_positive, 
                                                      true_negative, 
                                                      false_positive, 
