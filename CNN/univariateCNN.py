@@ -298,7 +298,7 @@ def calculate_mean_squared(predicted_val, actual_val):
 
     """
 
-    mse = math.sqrt(abs(actual_val - predicted_val))
+    mse = pow((predicted_val - actual_val), 2)
     return mse
 
 def predict_next_timestamp(model, raw_seq):
@@ -347,12 +347,12 @@ def validate(filename, raw_seq):
     for data in validation_data:
 
         # shape data
-        data = np.append(raw_seq, data)
-        X_update, y_update = split_sequence(data, n_steps)
+        temp_data = np.append(raw_seq, data)
+        X_update, y_update = split_sequence(temp_data, n_steps)
         X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
 
         # predict next time stamp
-        yhat_update = predict_next_timestamp(model, raw_seq)
+        yhat_update = predict_next_timestamp(model, temp_data)
 
         mse = calculate_mean_squared(yhat_update, data)
         mse_values.append(mse)
@@ -369,7 +369,7 @@ def validate(filename, raw_seq):
                                                     valid_data, predicted_invalid, flags)
 
         # only update raw_seq is the data was found to be valid
-        raw_seq = data
+        raw_seq = temp_data
 
         # if there is enough data to update the model  
         if len(valid_data) > update_frequency:
@@ -433,12 +433,12 @@ def test(filename, raw_seq):
     for data in testing_data:
 
         # shape data
-        data = np.append(raw_seq, data)
-        X_update, y_update = split_sequence(data, n_steps)
+        temp_data = np.append(raw_seq, data)
+        X_update, y_update = split_sequence(temp_data, n_steps)
         X_update = X_update.reshape((X_update.shape[0], X_update.shape[1], n_features))
 
         # predict next time stamp
-        yhat_update = predict_next_timestamp(model, raw_seq)
+        yhat_update = predict_next_timestamp(model, temp_data)
 
         mse = calculate_mean_squared(yhat_update, data)
         mse_values.append(mse)
@@ -452,7 +452,7 @@ def test(filename, raw_seq):
                                                     valid_data)
 
         # only update raw_seq is the data was found to be valid
-        raw_seq = data
+        raw_seq = temp_data
 
         # if there is enough data to update the model  
         if len(valid_data) > update_frequency:
@@ -523,6 +523,7 @@ def train_fit():
     print("Prediction: ", yhat)
 
     data = validate(filename, raw_seq)
+    test(filename, data)
     
     # true_positive = []
     # true_negative = []
