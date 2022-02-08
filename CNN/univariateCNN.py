@@ -220,12 +220,12 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
     print('Next_time_stamp_raw ' + str(next_timestamp_raw))
     print('Upper limit ' + str(upper_limit))
     print('Lower limit ' + str(lower_limit))
-    print('current data array', current_data[0])
+    print('current data array', current_data)
     
     # Compare data
-    if float(current_data[0]) > upper_limit or float(current_data[0]) < lower_limit:
+    if float(current_data) > upper_limit or float(current_data) < lower_limit:
         flags.append(True)
-        predicted_invalid.append([timestamp, current_data[0]])
+        predicted_invalid.append([timestamp, current_data])
         if timestamp in flag_dictionary:
             true_negative.append(timestamp)
         else:
@@ -275,9 +275,9 @@ def check_abnormal_test_data(next_timestamp_raw, current_data,
     print('Lower limit ' + str(lower_limit))
     
     # Compare data
-    if float(current_data[0]) > upper_limit or float(current_data[0]) < lower_limit:
+    if float(current_data) > upper_limit or float(current_data) < lower_limit:
         flags.append(True)
-        predicted_invalid.append([timestamp, current_data[0]])
+        predicted_invalid.append([timestamp, current_data])
     else:
         flags.append(False)
         valid_data.append(current_data)
