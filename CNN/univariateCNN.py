@@ -69,9 +69,12 @@ def get_train_data(filename):
         dataset (array): 2D array of training data which includes timestamp and T1
     """
     dataset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=[i for i in range(skipVal, endVal)])
-    dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
-        'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
-        'rv1','rv2','T1_class'],axis=1)
+    # for threshold testing T1 
+    dataset = dataset.drop(['Unnamed: 0','date','T1_class'],axis=1)
+    # uncomment below to drop columns from Gaussian_T1.csv file 
+    #dataset = dataset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+    #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+    #    'rv1','rv2','T1_class'],axis=1)
     dataset.to_csv('train_parsed.csv')
     return (dataset)
 
@@ -102,9 +105,12 @@ def get_test_data(filename):
         dataset (array): 2D array of testing data which includes timestamp and T1
     """
     testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
-    testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
-        'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
-        'rv1','rv2','T1_class'],axis=1)
+    # for threshold testing T1 
+    testset = testset.drop(['Unnamed: 0','date','T1_class'],axis=1)
+    # uncomment below to drop columns from Gaussian_T1.csv file 
+    #testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+    #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+    #   'rv1','rv2','T1_class'],axis=1)
     testset.to_csv('test_parsed.csv')
     return(testset)
         
@@ -121,9 +127,12 @@ def load_flag_dictionary(filename):
             determine if datapoint is valid or not
     """
     testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
-    testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
-        'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
-        'rv1','rv2'],axis=1)
+    # for threshold testing T1 
+    testset = testset.drop(['date'],axis=1)
+    # uncomment below to drop columns from Gaussian_T1.csv file 
+    #testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+    #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+    #    'rv1','rv2'],axis=1)
 
     # Seperate the data into individual arrays
     timestamps = testset.values[:, 0]
@@ -237,7 +246,7 @@ def train_fit():
     """Train and predict time series data"""
 
     # load data
-    filename = "gaussian_t1.csv"
+    filename = "threshold_T1.csv"
     raw_seq = array(get_train_data(filename))
     current_data = array(get_test_data(filename))
     timestamps, flag_dictionary = load_flag_dictionary(filename)   
