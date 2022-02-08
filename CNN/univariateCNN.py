@@ -165,17 +165,17 @@ def load_flag_dictionary(filename):
         flag_dictionary (dict[int]): Dictionary that contains T/F flags that
             determine if datapoint is valid or not
     """
-    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x), usecols=['date', 'T1_class'])
     # for threshold testing T1 
-    testset = testset.drop(['date'],axis=1)
+    # testset = testset.drop(['date'],axis=1)
     # uncomment below to drop columns from Gaussian_T1.csv file 
     #testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
     #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
     #    'rv1','rv2'],axis=1)
 
     # Seperate the data into individual arrays
-    timestamps = testset.values[:, 0]
-    flag = testset.values[:, 1]
+    timestamps = testset.index
+    flag = testset.values[:, 0]
 
     # Initialize dictionary
     flag_dictionary = {}
@@ -355,7 +355,7 @@ def validate(filename, raw_seq):
         yhat_update = predict_next_timestamp(model, temp_data)
 
         mse = calculate_mean_squared(yhat_update, data)
-        mse_values.append(mse[0])
+        mse_values.append(mse[0][0])
         
         valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
             false_negative = check_abnormal_data(yhat_update, 
@@ -401,7 +401,7 @@ def validate(filename, raw_seq):
     }
 
     data_export = pd.DataFrame(data_export_vals)
-    data_export.to_csv("T1_report.csv")
+    data_export.to_csv("T1_report.csv", index=False)
 
     # Plot graph: Current Data vs MSE
     plt.figure()
@@ -441,10 +441,9 @@ def test(filename, raw_seq):
         yhat_update = predict_next_timestamp(model, temp_data)
 
         mse = calculate_mean_squared(yhat_update, data)
-        mse_values.append(mse)
+        mse_values.append(mse[0][0])
         
-        valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
-            false_negative = check_abnormal_test_data(yhat_update,  
+        valid_data, predicted_invalid, flags = check_abnormal_test_data(yhat_update,  
                                                     data, 
                                                     timestamps[i], 
                                                     predicted_invalid,
@@ -476,7 +475,7 @@ def test(filename, raw_seq):
     }
 
     data_export = pd.DataFrame(data_export_vals)
-    data_export.to_csv("T1_report.csv")
+    data_export.to_csv("T1_report.csv", index=False)
 
     # Plot graph: Current Data vs MSE
     plt.figure()
