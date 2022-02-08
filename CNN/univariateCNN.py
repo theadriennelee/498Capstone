@@ -355,7 +355,7 @@ def validate(filename, raw_seq):
         yhat_update = predict_next_timestamp(model, temp_data)
 
         mse = calculate_mean_squared(yhat_update, data)
-        mse_values.append(mse)
+        mse_values.append(mse[0])
         
         valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
             false_negative = check_abnormal_data(yhat_update, 
