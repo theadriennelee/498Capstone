@@ -1,0 +1,15 @@
+{% extends 'sensor_viewer/header.html' %}
+
+{% block content %}
+<h1>Hello, {{ user.username|default:'Guest' }}</h1>
+<div>
+    {% if user.is_authenticated %}
+        <p>sensor array here</p>
+        <a href="{% url 'logout' %}">Logout</a>
+
+    {% else %}
+        <a href="{% url 'signup' %}">Sign Up</a>
+        <a href="{% url 'login' %}">Login</a>
+    {% endif %}
+</div>
+{% endblock %}
