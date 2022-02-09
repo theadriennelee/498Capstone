@@ -417,7 +417,7 @@ def test(filename, raw_seq):
 
     model = load_model('initial_model_validation.h5')
 
-    testing_data = array(get_validation_data(filename))  
+    testing_data = array(get_testing_data(filename))  
     timestamps, flag_dictionary = load_flag_dictionary(filename)
 
     mse_values = []
