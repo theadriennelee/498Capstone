@@ -90,7 +90,7 @@ def set_validation_data(index):
     Returns:
         boolean: Returns false if datapoint is a validation point
     """
-    if index >= midVal:
+    if skipVal < index < midVal:
         return False
     elif index == 0:
         return False
@@ -106,7 +106,7 @@ def set_testing_data(index):
     Returns:
         boolean: Returns false if datapoint is a validation point
     """
-    if skipVal < index < midVal:
+    if index >= midVal:
         return False
     elif index == 0:
         return False
@@ -183,7 +183,32 @@ def load_flag_dictionary(filename):
         if flag[x] == True:
             flag_dictionary[timestamps[x]] = True
 
-    return timestamps, flag_dictionary    
+    return timestamps, flag_dictionary 
+
+def load_test_timestamps(filename):
+    """
+    Create flag dictionary
+
+    Args:
+        filename (string): Name of .csv file that contains testing data
+    Returns:
+        timestamps (array[int]): Timestamps
+        data (array[int]): Testing data
+        flag_dictionary (dict[int]): Dictionary that contains T/F flags that
+            determine if datapoint is valid or not
+    """
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_testing_data(x), usecols=['date', 'T1_class'])
+    # for threshold testing T1 
+    # testset = testset.drop(['date'],axis=1)
+    # uncomment below to drop columns from Gaussian_T1.csv file 
+    #testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+    #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+    #    'rv1','rv2'],axis=1)
+
+    # Seperate the data into individual arrays
+    timestamps = testset.index
+
+    return timestamps   
 
 
 def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data, 
@@ -418,7 +443,7 @@ def test(filename, raw_seq):
     model = load_model('initial_model_validation.h5')
 
     testing_data = array(get_testing_data(filename))  
-    timestamps, flag_dictionary = load_flag_dictionary(filename)
+    timestamps = load_test_timestamps(filename)
 
     mse_values = []
 
