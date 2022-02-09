@@ -122,16 +122,16 @@ def get_validation_data(filename):
     Returns:
         dataset (array): 2D array of testing data which includes timestamp and T1
     """
-    series = pd.read_csv(filename, sep=',', header=0, index_col=0, usecols=['date', 'T1'], squeeze=True, skiprows=lambda x: set_validation_data(x))
-    # testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
+    # series = pd.read_csv(filename, sep=',', header=0, index_col=0, usecols=['date', 'T1'], squeeze=True, skiprows=lambda x: set_validation_data(x))
+    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
     # for threshold testing T1 
-    # testset = testset.drop(['Unnamed: 0','date','T1_class'],axis=1)
+    testset = testset.drop(['Unnamed: 0','date','T1_class'],axis=1)
     # uncomment below to drop columns from Gaussian_T1.csv file 
     #testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
     #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
     #   'rv1','rv2','T1_class'],axis=1)
-    series.to_csv('test_parsed.csv')
-    return series
+    testset.to_csv('test_parsed.csv')
+    return testset
 
 def get_testing_data(filename):
     """
