@@ -20,8 +20,8 @@ from matplotlib import pyplot
 
 # var = pd.read_csv("./clusteringData/predicted_invalid.csv")
 filename = "predicted_invalid.csv"
-data = pd.read_csv(filename, usecols=['0', '2'])
-timestamps = pd.read_csv(filename, usecols=['1'])
+data = pd.read_csv(filename, usecols=['Unnamed: 0', '1'])
+timestamps = pd.read_csv(filename, usecols=['0'])
 timestamps = timestamps.values
 X = data.to_numpy()
 # print(var)
