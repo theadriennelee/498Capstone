@@ -35,7 +35,7 @@ skipVal = 11840
 endVal = 19734
 midVal = 15787
 
-update_frequency = 50
+update_frequency = 100
 threshold = 0.02
 
 # split a univariate sequence into samples
@@ -90,7 +90,7 @@ def set_validation_data(index):
     Returns:
         boolean: Returns false if datapoint is a validation point
     """
-    if index >= midVal:
+    if skipVal < index < midVal:
         return False
     elif index == 0:
         return False
@@ -106,7 +106,7 @@ def set_testing_data(index):
     Returns:
         boolean: Returns false if datapoint is a validation point
     """
-    if skipVal < index < midVal:
+    if index >= midVal:
         return False
     elif index == 0:
         return False
@@ -130,7 +130,7 @@ def get_validation_data(filename):
     #testset = testset.drop(['Unnamed: 0','date','Appliances','lights','RH_1','T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
     #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
     #   'rv1','rv2','T1_class'],axis=1)
-    series.to_csv('test_parsed.csv')
+    # testset.to_csv('test_parsed.csv')
     return series
 
 def get_testing_data(filename):
@@ -165,17 +165,17 @@ def load_flag_dictionary(filename):
         flag_dictionary (dict[int]): Dictionary that contains T/F flags that
             determine if datapoint is valid or not
     """
-    testset = pd.read_csv(filename, index_col=None, squeeze=True, skiprows=lambda x: set_validation_data(x))
+    testset = pd.read_csv(filename, sep=',', header=0, index_col=0, squeeze=True, skiprows=lambda x: set_validation_data(x), usecols=['date', 'T1_class'])
     # for threshold testing T1 
-    testset = testset.drop(['date'],axis=1)
+    # testset = testset.drop(['date'],axis=1)
     # uncomment below to drop columns from Gaussian_T1.csv file 
     #testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
     #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
     #    'rv1','rv2'],axis=1)
 
     # Seperate the data into individual arrays
-    timestamps = testset.values[:, 0]
-    flag = testset.values[:, 1]
+    timestamps = testset.index
+    flag = testset.values
 
     # Initialize dictionary
     flag_dictionary = {}
@@ -183,7 +183,32 @@ def load_flag_dictionary(filename):
         if flag[x] == True:
             flag_dictionary[timestamps[x]] = True
 
-    return timestamps, flag_dictionary    
+    return timestamps, flag_dictionary 
+
+def load_test_timestamps(filename):
+    """
+    Create flag dictionary
+
+    Args:
+        filename (string): Name of .csv file that contains testing data
+    Returns:
+        timestamps (array[int]): Timestamps
+        data (array[int]): Testing data
+        flag_dictionary (dict[int]): Dictionary that contains T/F flags that
+            determine if datapoint is valid or not
+    """
+    testset = pd.read_csv(filename, sep=',', header=0, index_col=0, squeeze=True, skiprows=lambda x: set_testing_data(x), usecols=['date', 'T1_class'])
+    # for threshold testing T1 
+    # testset = testset.drop(['date'],axis=1)
+    # uncomment below to drop columns from Gaussian_T1.csv file 
+    #testset = testset.drop(['date','Appliances','lights','T1','RH_1', 'T2','RH_2','T3','RH_3','T4','RH_4','T5','RH_5',
+    #    'T6','RH_6','T7','RH_7','T8','RH_8','T9','RH_9','T_out','Press_mm_hg','RH_out','Windspeed','Visibility','Tdewpoint',
+    #    'rv1','rv2'],axis=1)
+
+    # Seperate the data into individual arrays
+    timestamps = testset.index
+
+    return timestamps   
 
 
 def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data, 
@@ -282,7 +307,7 @@ def check_abnormal_test_data(next_timestamp_raw, current_data,
         flags.append(False)
         valid_data.append(current_data)
     
-    return predicted_invalid, flags, valid_data
+    return valid_data, predicted_invalid, flags
 
 def calculate_mean_squared(predicted_val, actual_val):
     """
@@ -326,7 +351,7 @@ def validate(filename, raw_seq):
 
     model = load_model('initial_model.h5')
 
-    validation_data = array(get_validation_data(filename))  
+    validation_data = array(get_validation_data(filename))
     timestamps, flag_dictionary = load_flag_dictionary(filename)
 
     true_positive = []
@@ -355,7 +380,7 @@ def validate(filename, raw_seq):
         yhat_update = predict_next_timestamp(model, temp_data)
 
         mse = calculate_mean_squared(yhat_update, data)
-        mse_values.append(mse[0])
+        mse_values.append(mse[0][0])
         
         valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
             false_negative = check_abnormal_data(yhat_update, 
@@ -374,6 +399,7 @@ def validate(filename, raw_seq):
         # if there is enough data to update the model  
         if len(valid_data) > update_frequency:
             X, y = split_sequence(raw_seq, n_steps)
+            X = X.reshape((X.shape[0], X.shape[1], n_features))
             model.fit(X,y,epochs=5,verbose=1)
             model.save('initial_model_validation.h5')
             valid_data = []
@@ -401,7 +427,7 @@ def validate(filename, raw_seq):
     }
 
     data_export = pd.DataFrame(data_export_vals)
-    data_export.to_csv("T1_report.csv")
+    data_export.to_csv("T1_report.csv", index=False)
 
     # Plot graph: Current Data vs MSE
     plt.figure()
@@ -417,8 +443,8 @@ def test(filename, raw_seq):
 
     model = load_model('initial_model_validation.h5')
 
-    testing_data = array(get_validation_data(filename))  
-    timestamps, flag_dictionary = load_flag_dictionary(filename)
+    testing_data = array(get_testing_data(filename))  
+    timestamps = load_test_timestamps(filename)
 
     mse_values = []
 
@@ -441,10 +467,9 @@ def test(filename, raw_seq):
         yhat_update = predict_next_timestamp(model, temp_data)
 
         mse = calculate_mean_squared(yhat_update, data)
-        mse_values.append(mse)
+        mse_values.append(mse[0][0])
         
-        valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
-            false_negative = check_abnormal_test_data(yhat_update,  
+        valid_data, predicted_invalid, flags = check_abnormal_test_data(yhat_update,  
                                                     data, 
                                                     timestamps[i], 
                                                     predicted_invalid,
@@ -457,6 +482,7 @@ def test(filename, raw_seq):
         # if there is enough data to update the model  
         if len(valid_data) > update_frequency:
             X, y = split_sequence(raw_seq, n_steps)
+            X = X.reshape((X.shape[0], X.shape[1], n_features))
             model.fit(X,y,epochs=5,verbose=1)
             model.save('initial_model_validation.h5')
             valid_data = []
@@ -476,7 +502,7 @@ def test(filename, raw_seq):
     }
 
     data_export = pd.DataFrame(data_export_vals)
-    data_export.to_csv("T1_report.csv")
+    data_export.to_csv("T1_report_test.csv", index=False)
 
     # Plot graph: Current Data vs MSE
     plt.figure()
@@ -497,30 +523,31 @@ def train_fit():
     raw_seq = array(get_train_data(filename))
     # current_data = array(get_test_data(filename)) 
 
-    # split into samples
-    X, y = split_sequence(raw_seq, n_steps)
+    # # split into samples
+    # X, y = split_sequence(raw_seq, n_steps)
+    # print("first x " + str(X))
  
-    # reshape from [samples, timesteps] into [samples, timesteps, features]
-    X = X.reshape((X.shape[0], X.shape[1], n_features))
+    # # reshape from [samples, timesteps] into [samples, timesteps, features]
+    # X = X.reshape((X.shape[0], X.shape[1], n_features))
     
-    # create model
-    model = Sequential()
-    model.add(Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(n_steps, n_features)))
-    model.add(MaxPooling1D(pool_size=2))
-    model.add(Flatten())
-    model.add(Dense(50, activation='relu'))
-    model.add(Dense(1))
-    model.compile(optimizer='adam', loss='mse',metrics=['accuracy'])
+    # # create model
+    # model = Sequential()
+    # model.add(Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(n_steps, n_features)))
+    # model.add(MaxPooling1D(pool_size=2))
+    # model.add(Flatten())
+    # model.add(Dense(50, activation='relu'))
+    # model.add(Dense(1))
+    # model.compile(optimizer='adam', loss='mse',metrics=['accuracy'])
     
-    # fit model
-    model.fit(X,y,epochs=epochs,verbose=1)
+    # # fit model
+    # model.fit(X,y,epochs=epochs,verbose=1)
 
-    # predict next timestamp
-    yhat = predict_next_timestamp(model, raw_seq)
+    # # predict next timestamp
+    # yhat = predict_next_timestamp(model, raw_seq)
 
-    model.save('initial_model.h5') 
+    # model.save('initial_model.h5') 
 
-    print("Prediction: ", yhat)
+    # print("Prediction: ", yhat)
 
     data = validate(filename, raw_seq)
     test(filename, data)

@@ -173,7 +173,8 @@ def calculate_mean_squared(predicted_val, actual_val):
         mse (int): Mean squared error
 
     """
-    mse = math.sqrt(abs(actual_val - predicted_val))
+    # mse = math.sqrt(abs(actual_val - predicted_val))
+    mse = pow((actual_val - predicted_val), 2)
     return mse
 
 def validate(train_file, data, params, current_params):   
@@ -290,11 +291,6 @@ def validate(train_file, data, params, current_params):
     pred_inv = pd.DataFrame(predicted_invalid)
     pred_inv.to_csv("predicted_invalid.csv")
     
-    print('timestamps ' + str(len(timestamps)))
-    print('current data ' + str(len(current_data)))
-    print('mse ' + str(len(mse_values)))
-    print('flag ' + str(len(flags)))
-    
     data_export_vals = {
             'Date': timestamps,
             'T1': current_data,
@@ -302,7 +298,7 @@ def validate(train_file, data, params, current_params):
             'T1_c': flags
         }
     data_export = pd.DataFrame(data_export_vals)
-    data_export.to_csv("T1_report_final.csv")
+    data_export.to_csv("T1_report_final.csv", index=False)
     
     # Plot graph: predicted VS actual
     plt.figure()
@@ -422,7 +418,7 @@ def test(train_file, data, params, current_params):
             'T1_c': flags
         }
     data_export = pd.DataFrame(data_export_vals)
-    data_export.to_csv("T1_report_final_test.csv")
+    data_export.to_csv("T1_report_final_test.csv", index=False)
     
     # Plot graph: predicted VS actual
     plt.figure()
@@ -456,29 +452,29 @@ def train_predict():
         last_window_raw, last_window, data = data_helper.load_timeseries_with_filename(train_file, params)
 
 
-    # Build RNN (LSTM) model
-    lstm_layer = [1, params['window_size'], params['hidden_unit'], 1]
-    model = build_model.rnn_lstm(lstm_layer, params)
+    # # Build RNN (LSTM) model
+    # lstm_layer = [1, params['window_size'], params['hidden_unit'], 1]
+    # model = build_model.rnn_lstm(lstm_layer, params)
 
-    # Train RNN (LSTM) model with train set
-    model.fit(
-        x_train,
-        y_train,
-        batch_size=params['batch_size'],
-        epochs=params['epochs'],
-        validation_split=params['validation_split'])
-    model.save('initial_model.h5')
+    # # Train RNN (LSTM) model with train set
+    # model.fit(
+    #     x_train,
+    #     y_train,
+    #     batch_size=params['batch_size'],
+    #     epochs=params['epochs'],
+    #     validation_split=params['validation_split'])
+    # model.save('initial_model.h5')
 
-    # Check the model against validation set
-    predicted = build_model.predict_next_timestamp(model, x_valid)        
+    # # Check the model against validation set
+    # predicted = build_model.predict_next_timestamp(model, x_valid)        
 
-    # Predict the next timestamp
-    next_timestamp_raw, rms = forecast(x_valid_raw, 
-                                        y_valid_raw, 
-                                        predicted,
-                                        model, 
-                                        last_window, 
-                                        last_window_raw)
+    # # Predict the next timestamp
+    # next_timestamp_raw, rms = forecast(x_valid_raw, 
+    #                                     y_valid_raw, 
+    #                                     predicted,
+    #                                     model, 
+    #                                     last_window, 
+    #                                     last_window_raw)
     
     data = validate(train_file, data, params, current_params)
     
