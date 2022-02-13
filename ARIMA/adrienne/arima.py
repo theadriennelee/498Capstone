@@ -13,22 +13,26 @@ import numpy as np
 import matplotlib.pyplot as plt
 import statsmodels.api as sm
 
+# ignore these
 test_index = 200
-update_frequency = 5
-
 testVal = 19434
+
+# frequency that the model will be updated
+update_frequency = 5
 
 # TODO: fix file name
 filename = 'data.csv'
 
+# threshold that will accept a prediction as valid
 threshold = 0.2
 
-skipVal = 11840
+# splitting the dataset 80%
+skipVal = 15787
 endVal = 19734
 
 def set_testing_data(index):
     """
-    Helper function to read validation data
+    Helper function to read testing data
 
     Args:
         index (int): Index of datapoint
@@ -59,7 +63,41 @@ def calculate_mean_squared(predicted_val, actual_val):
     mse = pow((actual_val - predicted_val), 2)
     return mse
 
-def check_abnormal_data(prediction, flag_dictionary, current_data, timestamp, true_positive, true_negative, false_positive, false_negative, flags):
+def check_abnormal_data(prediction, flag_dictionary, 
+                        current_data, timestamp, 
+                        true_positive, true_negative, 
+                        false_positive, false_negative, 
+                        flags):
+    """
+
+    Compare new data against the predicted timestamp.
+    Places the timestamp of the data in true_positive, true_negative, 
+        false_positive or false_negative.
+
+    Args:
+        prediction (int): Predicted next timestamp
+        flag_dictionary (dict[int]): Dictionary that contains T/F flags that
+            determine if datapoint is valid or not
+        current_data (int): Data to be checked
+        timestamp (int): Timestamp of the data to be checked
+        true_positive (arr[int]): List of true positive timestamps
+        true_negative (arr[int]): List of true negative timestamps
+        false_positive (arr[int]): List of false positive timestamps
+        false_negative (arr[int]): List of flase negative timestamps
+        flags (arr[int]): list of T/F flags
+
+    Returns:
+        flags (arr[int]): list of T/F flags
+        true_positive (arr[int]): List of true positive timestamps
+        true_negative (arr[int]): List of true negative timestamps
+        false_positive (arr[int]): List of false positive timestamps
+        false_negative (arr[int]): List of flase negative timestamps
+        output_flag (bool): Returns True if prediction was invalid 
+            and False if prediction is valid
+
+    """
+    
+    # determine limits of validation
     upper_limit = prediction * (1 + threshold)
     lower_limit = prediction * (1 - threshold)
 
@@ -92,11 +130,9 @@ def check_abnormal_test_data(prediction, current_data,
     """
 
     Compare new data against the predicted timestamp.
-    Places the timestamp of the data in true_positive, true_negative, 
-        false_positive or false_negative.
 
     Args:
-        next_timestamp_raw (int): Predicted next timestamp
+        prediction (int): Predicted next timestamp
         current_data (int): Data to be checked
         timestamp (int): Timestamp of the data to be checked
         predicted_invalid (arr[int]): list of predicted invalid data
@@ -104,9 +140,10 @@ def check_abnormal_test_data(prediction, current_data,
         valid_data (arr[int]): list of valid data
 
     Returns:
-        predicted_invalid (arr[int]): list of invalid data
         flags (arr[int]): list of T/F flags
         valid_data (arr[int]): List of valid data
+        output_flag (bool): Returns True if prediction was invalid 
+            and False if prediction is valid
 
     """
     
@@ -129,10 +166,11 @@ def check_abnormal_test_data(prediction, current_data,
         valid_data.append(current_data)
     
     return flags, valid_data, output_flag
-    
-    # compare data
 
+# NOTE THIS SHOULD BE SPLIT INTO SEPERATE FUNCTION
+# PLEASE CLEAN UP ONCE EVERYTHING WORKS
 def train_predict():
+    # this part might get changed based on how model takes in data
     # load data
     data = pd.read_csv(filename, usecols=['date', 'T1'], index_col=0, skipfooter=testVal)
     # load timestamps and flags
@@ -192,7 +230,6 @@ def train_predict():
         if i == update_frequency:
             # TODO: Add code to update model
 
-            results = mod.fit()
             i = 0
         ind = ind + 1
         
@@ -240,6 +277,8 @@ def train_predict():
     
     
     # START OF TESTING - FOR CLEAN UP PURPOSES
+    # load test data (last 20%)
+    # this part might change based on how model takes in data
     series = pd.read_csv(filename, sep=',', header=0, index_col=0, usecols=['date', 'T1'], squeeze=True, skiprows=lambda x: set_testing_data(x))
     timestamps = series.index
     testing_data = series.values
@@ -277,7 +316,6 @@ def train_predict():
         if i == update_frequency:
             # TODO: Add code to update model
 
-            results = mod.fit()
             i = 0
         j = j + 1
         
@@ -304,6 +342,6 @@ def train_predict():
     plt.legend()
     plt.show()
 
-if __name__ = '__main__':
+if __name__ == '__main__':
     print("hello")
     train_predict()
