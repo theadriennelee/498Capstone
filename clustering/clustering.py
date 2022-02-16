@@ -17,14 +17,65 @@ from sklearn.cluster import MeanShift
 from sklearn.cluster import OPTICS
 from matplotlib import pyplot
 
+skipVal = 11840
+midVal = 15787
 
-# var = pd.read_csv("./clusteringData/predicted_invalid.csv")
+def set_validation_data(index):
+    """
+    Helper function to read validation data
+
+    Args:
+        index (int): Index of datapoint
+    Returns:
+        boolean: Returns false if datapoint is a validation point
+    """
+    if skipVal < index < midVal:
+        return False
+    elif index == 0:
+        return False
+    else:
+        return True
+
+def set_testing_data(index):
+    """
+    Helper function to read validation data
+
+    Args:
+        index (int): Index of datapoint
+    Returns:
+        boolean: Returns false if datapoint is a validation point
+    """
+    if index >= midVal:
+        return False
+    elif index == 0:
+        return False
+    else:
+        return True
+
+
+# LOOK AT ADRIENNE'S PREDICTED_INVALID.CSV TO RECREATE YOUR OWN WITH YOUR DATA
+# SHOULD INCLUDE TIMESTAMPS (DATE), INDEX AND T/F FLAG
 filename = "predicted_invalid.csv"
+dataset_filename = "threshold_T1.csv"
 data = pd.read_csv(filename, usecols=['Unnamed: 0', '1'])
 timestamps = pd.read_csv(filename, usecols=['0'])
 timestamps = timestamps.values
 X = data.to_numpy()
-# print(var)
+
+# CURRENTLY SET TO READ VALIDATION DATA, CHANGE TO set_testing_data IF RUNNING ON TESTING DATA
+series = pd.read_csv(dataset_filename, sep=',', header=0, index_col=0, usecols=['Unnamed: 0', 'T1_class'], squeeze=True, skiprows=lambda x: set_validation_data(x))
+test_dataset = pd.DataFrame()
+i = 0
+j = 0
+for flag in series.values:
+    if flag == True:
+        df = pd.DataFrame([[i, series.index[j] - skipVal - 1]])
+        test_dataset = test_dataset.append(df)
+        i = i + 1
+    j = j + 1
+Y = test_dataset.to_numpy()
+        
+
 
 # x = list(var['0'])
 # y = list(var['2'])
@@ -78,6 +129,7 @@ X = data.to_numpy()
 model = DBSCAN(eps=30, min_samples=15)
 # fit model and predict clusters
 yhat = model.fit_predict(X)
+
 # retrieve unique clusters
 clusters = unique(yhat)
 
@@ -92,12 +144,41 @@ for cluster in clusters:
      start_of_anomaly.append(X[row_ix[0][0], 0])
      end_of_anomaly.append(X[row_ix[0][len(row_ix[0]) - 1], 0])
      # create scatter of these samples
-     pyplot.scatter(X[row_ix, 0], X[row_ix, 1])
+     pyplot.scatter(X[row_ix, 1], X[row_ix, 0])
+pyplot.show()
+
+for cluster in clusters:
+     # get row indexes for samples with this cluster
+     row_ix = where(yhat == cluster)
+     # create scatter of these samples
+     pyplot.scatter(X[row_ix, 1], X[row_ix, 0], c = ["red"], label="Predicted")
+
+# fit model and predict clusters
+data_yhat = model.fit_predict(Y)
+# retrieve unique clusters
+data_clusters = unique(data_yhat)
+
+# create scatter plot for samples from each cluster
+for cluster in data_clusters:
+     # get row indexes for samples with this cluster
+     row_ix = where(data_yhat == cluster)
+     # create scatter of these samples
+     pyplot.scatter(Y[row_ix, 1], Y[row_ix, 0], c = ["blue"], label="Actual")
+
+
 # show the plot
 pyplot.show()
 
 for i in range(1, len(start_of_anomaly), 1):
     timestamp_anomaly.append([timestamps[start_of_anomaly[i]], timestamps[end_of_anomaly[i]]])
+
+# LOOK FOR TIMESTAMP_ANOMALY TO SEE THE START AND END POINTS OF CLUSTER
+# TWO PLOTS SHOULD BE CREATED
+# THE FIRST PLOT IS THE CLUSTERS ON PREDICTED DATA - PLAY AROUND WITH EPS AND MIN_SAMPLE TO FIND CORRECT CLUSTER
+# THE SECOND PLOT IS A COMPARISON BETWEEN PREDICTED DATA CLUSTERS AND ACTUAL CLUSTER
+
+
+
 
 # # MEAN SHIFT
 # # not exactly the best for testing
