@@ -207,8 +207,15 @@ def load_test_timestamps(filename):
 
     # Seperate the data into individual arrays
     timestamps = testset.index
+    flag = testset.values
 
-    return timestamps   
+    # Initialize dictionary
+    flag_dictionary = {}
+    for x in range(len(timestamps)):
+        if flag[x] == True:
+            flag_dictionary[timestamps[x]] = True
+
+    return timestamps, flag_dictionary   
 
 
 def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data, 
@@ -444,7 +451,7 @@ def test(filename, raw_seq):
     model = load_model('initial_model_validation.h5')
 
     testing_data = array(get_testing_data(filename))  
-    timestamps = load_test_timestamps(filename)
+    timestamps, flag_dictionary = load_test_timestamps(filename)
 
     mse_values = []
 
@@ -452,6 +459,11 @@ def test(filename, raw_seq):
     predicted_invalid = []
 
     flags = []
+
+    true_positive = []
+    true_negative = []
+    false_positive = []
+    false_negative = []
     
 
     #next step: continuously update the model to keep changing as it learns 
@@ -469,12 +481,23 @@ def test(filename, raw_seq):
         mse = calculate_mean_squared(yhat_update, data)
         mse_values.append(mse[0][0])
         
-        valid_data, predicted_invalid, flags = check_abnormal_test_data(yhat_update,  
+        # valid_data, predicted_invalid, flags = check_abnormal_test_data(yhat_update,  
+        #                                             data, 
+        #                                             timestamps[i], 
+        #                                             predicted_invalid,
+        #                                             flags,
+        #                                             valid_data)
+
+        valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
+            false_negative = check_abnormal_data(yhat_update, 
+                                                    flag_dictionary, 
                                                     data, 
                                                     timestamps[i], 
-                                                    predicted_invalid,
-                                                    flags,
-                                                    valid_data)
+                                                    true_positive, 
+                                                    true_negative, 
+                                                    false_positive, 
+                                                    false_negative, 
+                                                    valid_data, predicted_invalid, flags)
 
         # only update raw_seq is the data was found to be valid
         raw_seq = temp_data
@@ -489,6 +512,14 @@ def test(filename, raw_seq):
         i = i + 1
 
     # Export data
+    tp = pd.DataFrame(true_positive)
+    tp.to_csv('truePositiveTest.csv')
+    tn = pd.DataFrame(true_negative)
+    tn.to_csv('trueNegativeTest.csv')
+    fp = pd.DataFrame(false_positive)
+    fp.to_csv('falsePositiveTest.csv')
+    fn = pd.DataFrame(false_negative)
+    fn.to_csv('falseNegativeTest.csv')
     mseExport = pd.DataFrame(mse_values)
     mseExport.to_csv('mseExport_test.csv')
     pred_inv = pd.DataFrame(predicted_invalid)
@@ -523,29 +554,28 @@ def train_fit():
     raw_seq = array(get_train_data(filename))
     # current_data = array(get_test_data(filename)) 
 
-    # # split into samples
-    # X, y = split_sequence(raw_seq, n_steps)
-    # print("first x " + str(X))
+    # BEGINNING OF CREATING MODEL - CAN START COMMENTING HERE
+    # split into samples
+    X, y = split_sequence(raw_seq, n_steps)
  
-    # # reshape from [samples, timesteps] into [samples, timesteps, features]
-    # X = X.reshape((X.shape[0], X.shape[1], n_features))
+    # reshape from [samples, timesteps] into [samples, timesteps, features]
+    X = X.reshape((X.shape[0], X.shape[1], n_features))
     
-    # # create model
-    # model = Sequential()
-    # model.add(Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(n_steps, n_features)))
-    # model.add(MaxPooling1D(pool_size=2))
-    # model.add(Flatten())
-    # model.add(Dense(50, activation='relu'))
-    # model.add(Dense(1))
-    # model.compile(optimizer='adam', loss='mse',metrics=['accuracy'])
+    # create model
+    model = Sequential()
+    model.add(Conv1D(filters=64, kernel_size=2, activation='relu', input_shape=(n_steps, n_features)))
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Flatten())
+    model.add(Dense(50, activation='relu'))
+    model.add(Dense(1))
+    model.compile(optimizer='adam', loss='mse',metrics=['accuracy'])
     
-    # # fit model
-    # model.fit(X,y,epochs=epochs,verbose=1)
+    # fit model
+    model.fit(X,y,epochs=epochs,verbose=1)
 
-    # # predict next timestamp
-    # yhat = predict_next_timestamp(model, raw_seq)
+    model.save('initial_model.h5') 
 
-    # model.save('initial_model.h5') 
+    # END OF CREATING MODEL - CAN END COMMENTING HERE
 
     # print("Prediction: ", yhat)
 
