@@ -56,7 +56,7 @@ def set_testing_data(index):
 # LOOK AT ADRIENNE'S PREDICTED_INVALID.CSV TO RECREATE YOUR OWN WITH YOUR DATA
 # SHOULD INCLUDE TIMESTAMPS (DATE), INDEX AND T/F FLAG
 filename = "predicted_invalid.csv"
-dataset_filename = "threshold_T1.csv"
+dataset_filename = "./dataset/zero_T1n.csv"
 data = pd.read_csv(filename, usecols=['Unnamed: 0', '1'])
 timestamps = pd.read_csv(filename, usecols=['0'])
 timestamps = timestamps.values
@@ -64,6 +64,9 @@ X = data.to_numpy()
 
 # CURRENTLY SET TO READ VALIDATION DATA, CHANGE TO set_testing_data IF RUNNING ON TESTING DATA
 series = pd.read_csv(dataset_filename, sep=',', header=0, index_col=0, usecols=['Unnamed: 0', 'T1_class'], squeeze=True, skiprows=lambda x: set_validation_data(x))
+# data_timestamps = pd.read_csv(dataset_filename, sep=',', header=0, index_col=0, usecols=['date'], squeeze=True, skiprows=lambda x: set_validation_data(x))
+data_timestamps = pd.read_csv(dataset_filename, usecols=['date'], skiprows=lambda x: set_validation_data(x))
+data_timestamps = data_timestamps.values
 test_dataset = pd.DataFrame()
 i = 0
 j = 0
@@ -74,6 +77,7 @@ for flag in series.values:
         i = i + 1
     j = j + 1
 Y = test_dataset.to_numpy()
+
         
 
 
@@ -158,10 +162,16 @@ data_yhat = model.fit_predict(Y)
 # retrieve unique clusters
 data_clusters = unique(data_yhat)
 
+data_start_of_anomaly = []
+data_end_of_anomaly = []
+data_timestamp_anomaly = []
+
 # create scatter plot for samples from each cluster
 for cluster in data_clusters:
      # get row indexes for samples with this cluster
      row_ix = where(data_yhat == cluster)
+     data_start_of_anomaly.append(X[row_ix[0][0], 0])
+     data_end_of_anomaly.append(X[row_ix[0][len(row_ix[0]) - 1], 0])
      # create scatter of these samples
      pyplot.scatter(Y[row_ix, 1], Y[row_ix, 0], c = ["blue"], label="Actual")
 
@@ -171,6 +181,9 @@ pyplot.show()
 
 for i in range(1, len(start_of_anomaly), 1):
     timestamp_anomaly.append([timestamps[start_of_anomaly[i]], timestamps[end_of_anomaly[i]]])
+
+for i in range(1, len(data_start_of_anomaly), 1):
+    data_timestamp_anomaly.append([data_timestamps[data_start_of_anomaly[i]], data_timestamps[data_end_of_anomaly[i]]])
 
 # LOOK FOR TIMESTAMP_ANOMALY TO SEE THE START AND END POINTS OF CLUSTER
 # TWO PLOTS SHOULD BE CREATED
