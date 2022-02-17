@@ -2,7 +2,6 @@
 """
 Created on Sat Nov 27 12:20:53 2021
 
-@author: yujin
 """
 
 # univariate cnn example
@@ -20,8 +19,8 @@ import math
 import matplotlib.pyplot as plt
 
 # parameters
-epochs = 5
-batch_size = 2
+epochs = 10
+batch_size = 4
 window_size = 6
 train_test_split = 0.8
 validation_split = 0.1
@@ -36,7 +35,7 @@ endVal = 19734
 midVal = 15787
 
 update_frequency = 100
-threshold = 0.02
+threshold = 0.03
 
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
@@ -519,7 +518,7 @@ def train_fit():
     """Train and predict time series data"""
 
     # load data
-    filename = "threshold_T1.csv"
+    filename = "offset1_T1n.csv"
     raw_seq = array(get_train_data(filename))
     # current_data = array(get_test_data(filename)) 
 
