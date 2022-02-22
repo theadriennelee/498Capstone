@@ -55,17 +55,17 @@ def set_testing_data(index):
 
 # LOOK AT ADRIENNE'S PREDICTED_INVALID.CSV TO RECREATE YOUR OWN WITH YOUR DATA
 # SHOULD INCLUDE TIMESTAMPS (DATE), INDEX AND T/F FLAG
-filename = "predicted_invalid.csv"
-dataset_filename = "./dataset/zero_T1n.csv"
+filename = "./CNN/predicted_invalid.csv"
+dataset_filename = "zero_T1n.csv"
 data = pd.read_csv(filename, usecols=['Unnamed: 0', '1'])
 timestamps = pd.read_csv(filename, usecols=['0'])
 timestamps = timestamps.values
 X = data.to_numpy()
 
 # CURRENTLY SET TO READ VALIDATION DATA, CHANGE TO set_testing_data IF RUNNING ON TESTING DATA
-series = pd.read_csv(dataset_filename, sep=',', header=0, index_col=0, usecols=['Unnamed: 0', 'T1_class'], squeeze=True, skiprows=lambda x: set_validation_data(x))
+series = pd.read_csv(dataset_filename, sep=',', header=0, index_col=0, usecols=['Unnamed: 0', 'T1_class'], squeeze=True, skiprows=lambda x: set_testing_data(x))
 # data_timestamps = pd.read_csv(dataset_filename, sep=',', header=0, index_col=0, usecols=['date'], squeeze=True, skiprows=lambda x: set_validation_data(x))
-data_timestamps = pd.read_csv(dataset_filename, usecols=['date'], skiprows=lambda x: set_validation_data(x))
+data_timestamps = pd.read_csv(dataset_filename, usecols=['date'], skiprows=lambda x: set_testing_data(x))
 data_timestamps = data_timestamps.values
 test_dataset = pd.DataFrame()
 i = 0
@@ -158,7 +158,8 @@ for cluster in clusters:
      pyplot.scatter(X[row_ix, 1], X[row_ix, 0], c = ["red"], label="Predicted")
 
 # fit model and predict clusters
-data_yhat = model.fit_predict(Y)
+model_data = DBSCAN(eps=30, min_samples=15)
+data_yhat = model_data.fit_predict(Y)
 # retrieve unique clusters
 data_clusters = unique(data_yhat)
 
