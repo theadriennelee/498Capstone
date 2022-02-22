@@ -219,7 +219,7 @@ def load_test_timestamps(filename):
 
 def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data, 
                         timestamp, true_positive, true_negative, 
-                        false_positive, false_negative, valid_data, predicted_invalid, flags):
+                        false_positive, false_negative, valid_data, flags):
     """
     Compare new data against the predicted timestamp.
     Places the timestamp of the data in true_positive, true_negative, 
@@ -254,22 +254,25 @@ def check_abnormal_data(next_timestamp_raw, flag_dictionary, current_data,
     print('current data array', current_data)
     
     # Compare data
+    output_flag = None
     if float(current_data) > upper_limit or float(current_data) < lower_limit:
         flags.append(True)
-        predicted_invalid.append([timestamp, current_data])
+        output_flag = True
+        # predicted_invalid.append([timestamp, current_data])
         if timestamp in flag_dictionary:
             true_negative.append(timestamp)
         else:
             false_negative.append(timestamp)
     else:
         flags.append(False)
+        output_flag = False
         if timestamp in flag_dictionary:
             false_positive.append(timestamp)
         else:
             true_positive.append(timestamp)
         valid_data.append(current_data)
     
-    return valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive, false_negative
+    return valid_data, flags, true_positive, true_negative, false_positive, false_negative, output_flag
 
 def check_abnormal_test_data(next_timestamp_raw, current_data, 
                         timestamp, predicted_invalid, flags, valid_data):
@@ -388,8 +391,8 @@ def validate(filename, raw_seq):
         mse = calculate_mean_squared(yhat_update, data)
         mse_values.append(mse[0][0])
         
-        valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
-            false_negative = check_abnormal_data(yhat_update, 
+        valid_data, flags, true_positive, true_negative, false_positive,\
+            false_negative, output_flag = check_abnormal_data(yhat_update, 
                                                     flag_dictionary, 
                                                     data, 
                                                     timestamps[i], 
@@ -397,7 +400,10 @@ def validate(filename, raw_seq):
                                                     true_negative, 
                                                     false_positive, 
                                                     false_negative, 
-                                                    valid_data, predicted_invalid, flags)
+                                                    valid_data, flags)
+                                            
+        if output_flag == True:
+            predicted_invalid.append([timestamps[i], i])
 
         # only update raw_seq is the data was found to be valid
         raw_seq = temp_data
@@ -487,8 +493,8 @@ def test(filename, raw_seq):
         #                                             flags,
         #                                             valid_data)
 
-        valid_data, predicted_invalid, flags, true_positive, true_negative, false_positive,\
-            false_negative = check_abnormal_data(yhat_update, 
+        valid_data, flags, true_positive, true_negative, false_positive,\
+            false_negative, output_flag = check_abnormal_data(yhat_update, 
                                                     flag_dictionary, 
                                                     data, 
                                                     timestamps[i], 
@@ -496,7 +502,9 @@ def test(filename, raw_seq):
                                                     true_negative, 
                                                     false_positive, 
                                                     false_negative, 
-                                                    valid_data, predicted_invalid, flags)
+                                                    valid_data, flags)
+        if output_flag == True:
+            predicted_invalid.append([timestamps[i], i])
 
         # only update raw_seq is the data was found to be valid
         raw_seq = temp_data
