@@ -35,7 +35,7 @@ endVal = 19734
 midVal = 15787
 
 update_frequency = 100
-threshold = 0.03
+threshold = 0.025
 
 # split a univariate sequence into samples
 def split_sequence(sequence, n_steps):
@@ -557,7 +557,7 @@ def train_fit():
     """Train and predict time series data"""
 
     # load data
-    filename = "offset1_T1n.csv"
+    filename = "zero_T1.csv"
     raw_seq = array(get_train_data(filename))
     # current_data = array(get_test_data(filename)) 
 
